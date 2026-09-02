@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# Secrets
+.env
+
+# User-uploaded recitations and the attempts DB — regenerable/private, never committed
+data/attempts/*
+!data/attempts/.gitkeep
+*.db
+
+# Precomputed reference features — regenerable via scripts/build_reference.py
+data/reference/*
+!data/reference/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,22 @@
+# Backend web framework (M3)
+fastapi
+uvicorn[standard]
+python-multipart
+
+# Audio analysis core (M1, M2)
+librosa
+numpy
+scipy
+fastdtw
+pydub
+matplotlib
+
+# Quran Foundation API client + config (M1)
+requests
+python-dotenv
+
+# Persistence (M3)
+sqlalchemy
+
+# Dev / testing
+pytest
