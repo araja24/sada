@@ -1,0 +1,246 @@
+{
+  "reciter_name": "Mishari Rashid al-`Afasy",
+  "reciter_id": 7,
+  "source": "qf",
+  "audio_url": "https://download.quranicaudio.com/qdc/mishari_al_afasy/murattal/1.mp3",
+  "audio_format": "mp3",
+  "verses": [
+    {
+      "verse_key": "1:1",
+      "verse_number": 1,
+      "timestamp_from_ms": 0,
+      "timestamp_to_ms": 6090,
+      "duration_ms": 6090,
+      "words": [
+        {
+          "word_index": 1,
+          "start_ms": 0,
+          "end_ms": 580,
+          "duration_ms": 580
+        },
+        {
+          "word_index": 2,
+          "start_ms": 580,
+          "end_ms": 1409,
+          "duration_ms": 829
+        },
+        {
+          "word_index": 3,
+          "start_ms": 1409,
+          "end_ms": 2502,
+          "duration_ms": 1093
+        },
+        {
+          "word_index": 4,
+          "start_ms": 2502,
+          "end_ms": 5840,
+          "duration_ms": 3338
+        }
+      ]
+    },
+    {
+      "verse_key": "1:2",
+      "verse_number": 2,
+      "timestamp_from_ms": 6090,
+      "timestamp_to_ms": 11680,
+      "duration_ms": 5590,
+      "words": [
+        {
+          "word_index": 1,
+          "start_ms": 6025,
+          "end_ms": 7025,
+          "duration_ms": 1000
+        },
+        {
+          "word_index": 2,
+          "start_ms": 7025,
+          "end_ms": 7885,
+          "duration_ms": 860
+        },
+        {
+          "word_index": 3,
+          "start_ms": 7885,
+          "end_ms": 8515,
+          "duration_ms": 630
+        },
+        {
+          "word_index": 4,
+          "start_ms": 8515,
+          "end_ms": 11550,
+          "duration_ms": 3035
+        }
+      ]
+    },
+    {
+      "verse_key": "1:3",
+      "verse_number": 3,
+      "timestamp_from_ms": 11680,
+      "timestamp_to_ms": 16300,
+      "duration_ms": 4620,
+      "words": [
+        {
+          "word_index": 1,
+          "start_ms": 11615,
+          "end_ms": 12855,
+          "duration_ms": 1240
+        },
+        {
+          "word_index": 2,
+          "start_ms": 12855,
+          "end_ms": 16180,
+          "duration_ms": 3325
+        }
+      ]
+    },
+    {
+      "verse_key": "1:4",
+      "verse_number": 4,
+      "timestamp_from_ms": 16300,
+      "timestamp_to_ms": 20950,
+      "duration_ms": 4650,
+      "words": [
+        {
+          "word_index": 1,
+          "start_ms": 16245,
+          "end_ms": 17065,
+          "duration_ms": 820
+        },
+        {
+          "word_index": 2,
+          "start_ms": 17065,
+          "end_ms": 17665,
+          "duration_ms": 600
+        },
+        {
+          "word_index": 3,
+          "start_ms": 17665,
+          "end_ms": 20830,
+          "duration_ms": 3165
+        }
+      ]
+    },
+    {
+      "verse_key": "1:5",
+      "verse_number": 5,
+      "timestamp_from_ms": 20950,
+      "timestamp_to_ms": 27660,
+      "duration_ms": 6710,
+      "words": [
+        {
+          "word_index": 1,
+          "start_ms": 20885,
+          "end_ms": 21875,
+          "duration_ms": 990
+        },
+        {
+          "word_index": 2,
+          "start_ms": 21875,
+          "end_ms": 22645,
+          "duration_ms": 770
+        },
+        {
+          "word_index": 3,
+          "start_ms": 22645,
+          "end_ms": 23765,
+          "duration_ms": 1120
+        },
+        {
+          "word_index": 4,
+          "start_ms": 23765,
+          "end_ms": 27520,
+          "duration_ms": 3755
+        }
+      ]
+    },
+    {
+      "verse_key": "1:6",
+      "verse_number": 6,
+      "timestamp_from_ms": 27660,
+      "timestamp_to_ms": 33250,
+      "duration_ms": 5590,
+      "words": [
+        {
+          "word_index": 1,
+          "start_ms": 27585,
+          "end_ms": 28325,
+          "duration_ms": 740
+        },
+        {
+          "word_index": 2,
+          "start_ms": 28325,
+          "end_ms": 29225,
+          "duration_ms": 900
+        },
+        {
+          "word_index": 3,
+          "start_ms": 29225,
+          "end_ms": 33110,
+          "duration_ms": 3885
+        }
+      ]
+    },
+    {
+      "verse_key": "1:7",
+      "verse_number": 7,
+      "timestamp_from_ms": 33250,
+      "timestamp_to_ms": 46490,
+      "duration_ms": 13240,
+      "words": [
+        {
+          "word_index": 1,
+          "start_ms": 33185,
+          "end_ms": 33935,
+          "duration_ms": 750
+        },
+        {
+          "word_index": 2,
+          "start_ms": 33935,
+          "end_ms": 34855,
+          "duration_ms": 920
+        },
+        {
+          "word_index": 3,
+          "start_ms": 34855,
+          "end_ms": 35875,
+          "duration_ms": 1020
+        },
+        {
+          "word_index": 4,
+          "start_ms": 35875,
+          "end_ms": 36805,
+          "duration_ms": 930
+        },
+        {
+          "word_index": 5,
+          "start_ms": 36805,
+          "end_ms": 37395,
+          "duration_ms": 590
+        },
+        {
+          "word_index": 6,
+          "start_ms": 37395,
+          "end_ms": 38565,
+          "duration_ms": 1170
+        },
+        {
+          "word_index": 7,
+          "start_ms": 38565,
+          "end_ms": 39565,
+          "duration_ms": 1000
+        },
+        {
+          "word_index": 8,
+          "start_ms": 39565,
+          "end_ms": 39855,
+          "duration_ms": 290
+        },
+        {
+          "word_index": 9,
+          "start_ms": 39855,
+          "end_ms": 46360,
+          "duration_ms": 6505
+        }
+      ]
+    }
+  ]
+}
