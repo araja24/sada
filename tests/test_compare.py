@@ -15,6 +15,7 @@ import pytest
 
 from analysis.pitch import extract_pitch_contour
 from analysis.qf_client import VerseTimestamp, WordTimestamp
+from analysis.tone import extract_mfcc
 from scripts import compare
 
 
@@ -125,6 +126,7 @@ def _write_reference_bundle(reference_dir, reciter: str, y: np.ndarray, sr: int)
     reciter_dir = reference_dir / reciter
     reciter_dir.mkdir(parents=True)
     contour = extract_pitch_contour(y, sr)
+    mfcc = extract_mfcc(y, sr)
     np.savez(
         reciter_dir / "features.npz",
         sample_rate=sr,
@@ -134,7 +136,7 @@ def _write_reference_bundle(reference_dir, reciter: str, y: np.ndarray, sr: int)
         semitones=contour.semitones,
         semitones_centered=contour.semitones_centered,
         median_semitone=contour.median_semitone,
-        mfcc=np.zeros((13, len(contour.times))),
+        mfcc=mfcc,
     )
     duration_ms = int(len(y) / sr * 1000)
     (reciter_dir / "timestamps.json").write_text(
@@ -166,8 +168,10 @@ def test_compare_identical_recitation_scores_highly(tmp_path, wav_file_factory):
 
     result = compare.compare(audio_path, "test-reciter", "1", reference_dir)
 
-    assert result.overall_score > 90.0
-    assert result.per_verse_scores[1] > 90.0
+    assert result.melody.overall_score > 90.0
+    assert result.melody.per_verse_scores[1] > 90.0
+    assert result.tone.overall_score > 90.0
+    assert result.tone.per_verse_scores[1] > 90.0
 
 
 def test_compare_unknown_verse_range_raises(tmp_path, wav_file_factory):
@@ -186,3 +190,24 @@ def test_compare_missing_reciter_raises(tmp_path, wav_file_factory):
     audio_path = wav_file_factory(_sine(220.0, 1.0, sr), sr=sr, name="user.wav")
     with pytest.raises(compare.ComparisonError):
         compare.compare(audio_path, "nonexistent-reciter", "1-7", tmp_path / "reference")
+
+
+# --- print_report: product-level framing requirement (PRD §5.6) ------------
+
+
+def test_print_report_frames_tone_as_similarity_never_correctness(capsys):
+    from analysis.melody import MelodyScoreResult
+    from analysis.tone import ToneScoreResult
+
+    result = compare.CompareResult(
+        melody=MelodyScoreResult(
+            overall_score=80.0, per_verse_scores={1: 80.0}, alignment=None, divergences=[]
+        ),
+        tone=ToneScoreResult(overall_score=65.0, per_verse_scores={1: 65.0}),
+    )
+    compare.print_report(result)
+    output = capsys.readouterr().out.lower()
+
+    assert "tone similarity" in output
+    assert "correctness" not in output
+    assert "wrong" not in output

@@ -118,8 +118,8 @@ def test_detect_divergences_finds_sustained_gap():
     user[2:10] = 6.0  # user sings 6 semitones above the reference here
     result = melody.detect_melody_divergences(
         align.align_sequences(user, ref),
-        melody.VoicedSeries(times=np.arange(12) * 0.1, semitones=user),
-        melody.VoicedSeries(times=np.arange(12) * 0.1, semitones=ref),
+        melody.VoicedSeries(times=np.arange(12) * 0.1, semitones=user, frame_indices=np.arange(12)),
+        melody.VoicedSeries(times=np.arange(12) * 0.1, semitones=ref, frame_indices=np.arange(12)),
     )
     assert len(result) == 1
     region = result[0]
@@ -135,8 +135,8 @@ def test_detect_divergences_ignores_short_gap():
     user[5:7] = 6.0
     result = melody.detect_melody_divergences(
         align.align_sequences(user, ref),
-        melody.VoicedSeries(times=np.arange(12) * 0.1, semitones=user),
-        melody.VoicedSeries(times=np.arange(12) * 0.1, semitones=ref),
+        melody.VoicedSeries(times=np.arange(12) * 0.1, semitones=user, frame_indices=np.arange(12)),
+        melody.VoicedSeries(times=np.arange(12) * 0.1, semitones=ref, frame_indices=np.arange(12)),
     )
     assert result == []
 
@@ -147,8 +147,8 @@ def test_detect_divergences_direction_too_low():
     user[2:10] = -6.0  # user sings below the reference
     result = melody.detect_melody_divergences(
         align.align_sequences(user, ref),
-        melody.VoicedSeries(times=np.arange(12) * 0.1, semitones=user),
-        melody.VoicedSeries(times=np.arange(12) * 0.1, semitones=ref),
+        melody.VoicedSeries(times=np.arange(12) * 0.1, semitones=user, frame_indices=np.arange(12)),
+        melody.VoicedSeries(times=np.arange(12) * 0.1, semitones=ref, frame_indices=np.arange(12)),
     )
     assert len(result) == 1
     assert result[0].direction == "too_low"
@@ -171,8 +171,8 @@ def test_detect_divergences_maps_to_verse_and_word():
     ]
     result = melody.detect_melody_divergences(
         align.align_sequences(user, ref),
-        melody.VoicedSeries(times=np.arange(12) * 0.1, semitones=user),
-        melody.VoicedSeries(times=np.arange(12) * 0.1, semitones=ref),
+        melody.VoicedSeries(times=np.arange(12) * 0.1, semitones=user, frame_indices=np.arange(12)),
+        melody.VoicedSeries(times=np.arange(12) * 0.1, semitones=ref, frame_indices=np.arange(12)),
         ref_verses=verses,
     )
     assert len(result) == 1

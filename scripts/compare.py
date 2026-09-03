@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """CLI: compare a user's recitation to a cached reference reciter.
 
-Milestone 2's first slice (INITIAL_PROJECT_PLAN.md §5.4/§5.5, §9): DTW-align
-the user's pitch contour to a cached reference reciter's, then print the
-melody score (overall + per-verse) and specific improvement tips. Reads the
-reference bundle that `scripts/build_reference.py` cached under
-data/reference/<reciter_slug>/ -- run that first if it doesn't exist yet.
+Milestone 2 (INITIAL_PROJECT_PLAN.md §5.4/§5.5/§5.6, §9): DTW-align the
+user's pitch contour to a cached reference reciter's, then print the melody
+score and the tone-similarity score (each overall + per-verse), plus
+specific improvement tips. Reads the reference bundle that
+`scripts/build_reference.py` cached under data/reference/<reciter_slug>/ --
+run that first if it doesn't exist yet.
 
 Usage:
     python scripts/compare.py --audio my_recitation.wav --reciter mishary
@@ -17,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
@@ -24,11 +26,17 @@ import numpy as np
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from analysis import audio_io, pitch  # noqa: E402
-from analysis.melody import DivergenceRegion, MelodyScoreResult, score_melody  # noqa: E402
+from analysis import audio_io, pitch, tone  # noqa: E402
+from analysis.melody import DivergenceRegion, MelodyScoreResult, score_melody, voiced_series  # noqa: E402
 from analysis.qf_client import AL_FATIHA_CHAPTER_NUMBER, VerseTimestamp, WordTimestamp  # noqa: E402
 
 DEFAULT_REFERENCE_DIR = REPO_ROOT / "data" / "reference"
+
+
+@dataclass
+class CompareResult:
+    melody: MelodyScoreResult
+    tone: tone.ToneScoreResult
 
 
 class ComparisonError(RuntimeError):
@@ -52,6 +60,17 @@ def load_reference_contour(reciter_dir: Path) -> pitch.PitchContour:
         semitones_centered=features["semitones_centered"],
         median_semitone=float(features["median_semitone"]),
     )
+
+
+def load_reference_mfcc(reciter_dir: Path) -> np.ndarray:
+    """Load a cached reciter's MFCC matrix from features.npz (M1 output)."""
+    features_path = reciter_dir / "features.npz"
+    if not features_path.exists():
+        raise ComparisonError(
+            f"No cached reference found at {reciter_dir}. "
+            "Run scripts/build_reference.py for this reciter first."
+        )
+    return np.load(features_path)["mfcc"]
 
 
 def load_reference_verses(
@@ -112,18 +131,30 @@ def format_tip(region: DivergenceRegion) -> str:
     )
 
 
-def print_report(result: MelodyScoreResult) -> None:
+def print_report(result: CompareResult) -> None:
+    melody, tone_result = result.melody, result.tone
+
     print()
-    print(f"Melody score: {result.overall_score:.0f}/100")
-    if result.per_verse_scores:
-        print()
+    print(f"Melody score: {melody.overall_score:.0f}/100")
+    if melody.per_verse_scores:
         print("Per-verse melody scores:")
-        for verse_number in sorted(result.per_verse_scores):
-            print(f"  Verse {verse_number}: {result.per_verse_scores[verse_number]:.0f}/100")
+        for verse_number in sorted(melody.per_verse_scores):
+            print(f"  Verse {verse_number}: {melody.per_verse_scores[verse_number]:.0f}/100")
+
+    # Framing requirement (PRD §5.6): "tone similarity," never "correctness"
+    # -- different voices legitimately differ.
     print()
-    if result.divergences:
+    print(f"Tone similarity score: {tone_result.overall_score:.0f}/100")
+    print("(How closely your vocal tone resembles the reciter's -- every voice is different.)")
+    if tone_result.per_verse_scores:
+        print("Per-verse tone similarity scores:")
+        for verse_number in sorted(tone_result.per_verse_scores):
+            print(f"  Verse {verse_number}: {tone_result.per_verse_scores[verse_number]:.0f}/100")
+
+    print()
+    if melody.divergences:
         print("Tips:")
-        for region in result.divergences:
+        for region in melody.divergences:
             print(f"  - {format_tip(region)}")
     else:
         print("No significant melodic divergences detected.")
@@ -134,11 +165,12 @@ def compare(
     reciter: str,
     verse_range_spec: str = "1-7",
     reference_dir: Path = DEFAULT_REFERENCE_DIR,
-) -> MelodyScoreResult:
+) -> CompareResult:
     reciter_dir = reference_dir / reciter
 
     print(f"Loading reference bundle for {reciter!r}...")
     ref_contour = load_reference_contour(reciter_dir)
+    ref_mfcc = load_reference_mfcc(reciter_dir)
     ref_verses = load_reference_verses(reciter_dir)
 
     verse_range = parse_verse_range(verse_range_spec)
@@ -152,11 +184,27 @@ def compare(
     print(f"Loading and preprocessing {audio_path}...")
     y, sr, _trim = audio_io.load_and_preprocess(audio_path)
 
-    print("Extracting pitch contour...")
+    print("Extracting pitch contour and MFCCs...")
     user_contour = pitch.extract_pitch_contour(y, sr)
+    user_mfcc = tone.extract_mfcc(y, sr)
 
     print("Aligning and scoring melody...")
-    return score_melody(user_contour, ref_contour, ref_verses=verses_in_range)
+    melody_result = score_melody(user_contour, ref_contour, ref_verses=verses_in_range)
+
+    print("Scoring tone similarity...")
+    # Reuse melody's alignment path (PRD §5.4/§5.6), not a fresh DTW pass --
+    # voiced_series() itself is cheap (array masking), only the DTW alignment
+    # it fed into is expensive, and that's already computed above.
+    tone_result = tone.score_tone(
+        user_mfcc,
+        ref_mfcc,
+        melody_result.alignment,
+        voiced_series(user_contour),
+        voiced_series(ref_contour),
+        ref_verses=verses_in_range,
+    )
+
+    return CompareResult(melody=melody_result, tone=tone_result)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from . import config
-from .align import AlignmentResult, align_sequences
+from .align import AlignmentResult, align_sequences, path_indices_by_verse
 from .pitch import PitchContour
 from .qf_client import VerseTimestamp
 
@@ -29,18 +29,28 @@ class VoicedSeries:
 
     fastdtw can't compare against a masked/unvoiced frame, so this is
     always `contour.times`/`semitones_centered` filtered down to the
-    frames where a pitch was actually detected.
+    frames where a pitch was actually detected. `frame_indices` records
+    which original (unfiltered) contour frame each entry came from, so
+    other per-frame features that share the same frame grid -- MFCCs, in
+    particular, since analysis.tone uses the same hop_length -- can be
+    looked up for the same instants the alignment path was computed over
+    (PRD §5.4: "the alignment path is reused by every other scorer").
     """
 
     times: np.ndarray
     semitones: np.ndarray
+    frame_indices: np.ndarray
 
 
 def voiced_series(contour: PitchContour) -> VoicedSeries:
     mask = ~np.isnan(contour.semitones_centered)
     if not mask.any():
         raise ValueError("Pitch contour has no voiced frames to align.")
-    return VoicedSeries(times=contour.times[mask], semitones=contour.semitones_centered[mask])
+    return VoicedSeries(
+        times=contour.times[mask],
+        semitones=contour.semitones_centered[mask],
+        frame_indices=np.nonzero(mask)[0],
+    )
 
 
 @dataclass
@@ -89,20 +99,6 @@ def calibrate_melody_score(normalized_distance: float) -> float:
     return max(0.0, min(100.0, score))
 
 
-def _path_indices_by_verse(
-    path: list[tuple[int, int]], ref_times: np.ndarray, verses: list[VerseTimestamp]
-) -> dict[int, list[int]]:
-    """For each verse, which positions in `path` land inside it (by ref time)."""
-    ranges: dict[int, list[int]] = {v.verse_number: [] for v in verses}
-    for i, (_u_idx, r_idx) in enumerate(path):
-        ref_t_ms = ref_times[r_idx] * 1000.0
-        for v in verses:
-            if v.timestamp_from_ms <= ref_t_ms <= v.timestamp_to_ms:
-                ranges[v.verse_number].append(i)
-                break
-    return ranges
-
-
 def score_melody(
     user_contour: PitchContour,
     ref_contour: PitchContour,
@@ -123,7 +119,7 @@ def score_melody(
 
     per_verse_scores: dict[int, float] = {}
     if ref_verses:
-        indices_by_verse = _path_indices_by_verse(alignment.path, ref_series.times, ref_verses)
+        indices_by_verse = path_indices_by_verse(alignment.path, ref_series.times, ref_verses)
         for verse_number, indices in indices_by_verse.items():
             if not indices:
                 continue
