@@ -26,7 +26,7 @@ import numpy as np
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from analysis import audio_io, pacing, pitch, tone  # noqa: E402
+from analysis import audio_io, elongation, pacing, pitch, tone  # noqa: E402
 from analysis.melody import DivergenceRegion, MelodyScoreResult, score_melody, voiced_series  # noqa: E402
 from analysis.qf_client import AL_FATIHA_CHAPTER_NUMBER, VerseTimestamp, WordTimestamp  # noqa: E402
 
@@ -38,6 +38,7 @@ class CompareResult:
     melody: MelodyScoreResult
     tone: tone.ToneScoreResult
     pacing: pacing.PacingScoreResult
+    elongation: elongation.ElongationScoreResult
 
 
 class ComparisonError(RuntimeError):
@@ -145,8 +146,25 @@ def format_pacing_tip(tip: pacing.PacingTip) -> str:
     )
 
 
+def format_elongation_tip(tip: elongation.ElongationTip) -> str:
+    if tip.kind == "shortfall":
+        return (
+            f"Verse {tip.verse_number}, word {tip.word_index}: the reciter elongates this word; "
+            f"you held it ~{abs(tip.percent_off):.0f}% shorter. Extend the madd."
+        )
+    return (
+        f"Verse {tip.verse_number}, word {tip.word_index}: you're over-holding this word "
+        f"(~{abs(tip.percent_off):.0f}% longer than the reciter)."
+    )
+
+
 def print_report(result: CompareResult) -> None:
-    melody, tone_result, pacing_result = result.melody, result.tone, result.pacing
+    melody, tone_result, pacing_result, elongation_result = (
+        result.melody,
+        result.tone,
+        result.pacing,
+        result.elongation,
+    )
 
     print()
     print(f"Melody score: {melody.overall_score:.0f}/100")
@@ -173,14 +191,23 @@ def print_report(result: CompareResult) -> None:
         for verse_number in sorted(pacing_result.per_verse_scores):
             print(f"  Verse {verse_number}: {pacing_result.per_verse_scores[verse_number]:.0f}/100")
 
+    # Naming requirement (PRD §5.8): "elongation timing," never "tajweed
+    # score" -- a timing proxy, not a tajweed ruling.
     print()
-    tips = list(melody.divergences) + list(pacing_result.tips)
+    print(f"Elongation timing score: {elongation_result.overall_score:.0f}/100")
+    if not elongation_result.candidates:
+        print("(No elongation-candidate words in this range.)")
+
+    print()
+    tips = list(melody.divergences) + list(pacing_result.tips) + list(elongation_result.tips)
     if tips:
         print("Tips:")
         for region in melody.divergences:
             print(f"  - {format_tip(region)}")
         for tip in pacing_result.tips:
             print(f"  - {format_pacing_tip(tip)}")
+        for tip in elongation_result.tips:
+            print(f"  - {format_elongation_tip(tip)}")
     else:
         print("No significant issues detected.")
 
@@ -237,7 +264,17 @@ def compare(
         ref_verses=verses_in_range,
     )
 
-    return CompareResult(melody=melody_result, tone=tone_result, pacing=pacing_result)
+    print("Scoring elongation timing...")
+    elongation_result = elongation.score_elongation(
+        melody_result.alignment,
+        voiced_series(user_contour),
+        voiced_series(ref_contour),
+        ref_verses=verses_in_range,
+    )
+
+    return CompareResult(
+        melody=melody_result, tone=tone_result, pacing=pacing_result, elongation=elongation_result
+    )
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

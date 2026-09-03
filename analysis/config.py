@@ -60,3 +60,28 @@ PACING_MIN_REFERENCE_PAUSE_S = 0.2
 # A user's pause is flagged as missing/short when it's under this fraction
 # of the reference's pause at the same verse boundary.
 PACING_SHORT_PAUSE_RATIO = 0.5
+
+# --- Elongation (madd-proxy) score calibration (PRD §5.8) ---
+# A reference word is an "elongation candidate" -- a graphemic proxy for
+# madd, never a tajweed ruling -- when its duration exceeds this multiple
+# of the local median duration of nearby words. The exact 1.6x figure is
+# specified by the PRD itself, not hand-tuned like the other constants here.
+ELONGATION_LOCAL_MEDIAN_RATIO = 1.6
+
+# "Nearby words" for that local median: this many words on each side,
+# across the whole scored passage's word sequence (not reset at verse
+# boundaries -- Al-Fatiha's verses are short enough that a per-verse
+# window would often have too few words to give a meaningful median).
+ELONGATION_WINDOW_RADIUS = 3
+
+# Ratio-based scoring for elongation-candidate words: same symmetric
+# log-ratio decay shape as pacing's calibration (ratio 1.0 -> 100, equally
+# penalizes over- and under-holding by the same factor), but its own
+# hand-tuned constant since a single word's timing tolerance need not
+# match a whole verse's.
+ELONGATION_DECAY_RATE = 1.5
+
+# A candidate word's tip fires when the user's held duration is off by
+# more than this percentage of the reference's -- PRD §5.8: "large
+# shortfalls/overshoots."
+ELONGATION_TIP_PERCENT_THRESHOLD = 30.0
