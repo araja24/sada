@@ -112,6 +112,17 @@ h2 { font-size: 1.5rem; margin: .25rem 0 .75rem; }
 .range-readout { font-weight: 500; }
 .ref-player { display: flex; align-items: center; gap: .75rem; }
 
+/* --- recorder (issue #9) --- */
+.recorder { display: grid; gap: .5rem; justify-items: start; }
+.rec-timer {
+  font-variant-numeric: tabular-nums; font-size: 2.6rem; font-weight: 600;
+  letter-spacing: .02em; margin-top: .5rem;
+}
+.rec-timer.live { color: var(--danger); }
+.rec-cap { font-size: .85rem; margin-top: -.4rem; }
+.rec-controls { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; margin-top: 1rem; }
+.rec-preview { width: 100%; max-width: 22rem; margin: .25rem 0; }
+
 /* --- spinner --- */
 .spinner {
   width: 2.5rem; height: 2.5rem; margin: 0 auto 1.25rem;
