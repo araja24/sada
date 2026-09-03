@@ -10,7 +10,14 @@ without re-hitting the live API.
 Run manually by the developer (not at request time):
 
     python scripts/build_reference.py
-    python scripts/build_reference.py --reciter-name "Maher Al Muaiqly" --plot-verse 1
+    python scripts/build_reference.py --reciter-id 7 --plot-verse 1
+
+v1's preset reciter is Mishari Rashid al-`Afasy (chapter-reciter id 7 --
+see docs/adr/0001-reference-data-source.md for why, not Maher Al Muaiqly
+as originally planned). Pass --reciter-id explicitly rather than relying
+on --reciter-name's substring lookup for him: the content API also lists
+a second entry, "Mishari Rashid al-`Afasy Streaming", whose name contains
+his as a substring, so a name-only lookup is ambiguous.
 
 Requires QF_CLIENT_ID / QF_CLIENT_SECRET in your environment or a .env file
 in the repo root (see .env.example) -- these are free developer credentials
@@ -42,7 +49,12 @@ from analysis.qf_client import (  # noqa: E402
     slugify,
 )
 
-DEFAULT_RECITER_NAME = "Maher Al Muaiqly"
+DEFAULT_RECITER_NAME = "Mishari Rashid al-`Afasy"
+# The content API also lists "Mishari Rashid al-`Afasy Streaming" (a
+# separate chapter-reciter id whose name contains his as a substring), so
+# --reciter-name's lookup alone is ambiguous for him -- default --reciter-id
+# to his known id so a plain, no-args run still works.
+DEFAULT_RECITER_ID = 7
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "data" / "reference"
 
 
@@ -157,8 +169,13 @@ def build_reference(
     client = make_client(source)
 
     if reciter_id is None:
-        print(f"Looking up chapter-reciter id for {reciter_name!r}...")
-        reciter_id = client.find_reciter_id(reciter_name)
+        if reciter_name == DEFAULT_RECITER_NAME:
+            # A name-only lookup for him is ambiguous (see DEFAULT_RECITER_ID's
+            # comment) -- skip the search and use his known id directly.
+            reciter_id = DEFAULT_RECITER_ID
+        else:
+            print(f"Looking up chapter-reciter id for {reciter_name!r}...")
+            reciter_id = client.find_reciter_id(reciter_name)
     print(f"  -> reciter_id={reciter_id}")
 
     print(f"Fetching chapter {chapter_number} audio + word timestamps...")

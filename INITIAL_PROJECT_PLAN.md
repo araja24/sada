@@ -14,7 +14,7 @@ Recitation Coach is a **web app** that helps Muslims match their Quran recitatio
 **This is a style coach, not a correctness checker.** Existing apps (e.g., Tarteel) verify *what* you said (word-level correctness for memorization). This app analyzes *how* you said it and how closely your delivery resembles a specific reciter's.
 
 ### Target user
-A Muslim who already knows the words of the surah and wants to improve the beauty and style of their recitation by emulating a specific reciter (e.g., "I want my Al-Fatiha to sound like Maher Al Muaiqly's").
+A Muslim who already knows the words of the surah and wants to improve the beauty and style of their recitation by emulating a specific reciter (e.g., "I want my Al-Fatiha to sound like Mishari al-`Afasy's").
 
 ---
 
