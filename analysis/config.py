@@ -9,12 +9,37 @@ recordings only ever touches this file.
 from __future__ import annotations
 
 # --- Overall score: weighted average of the four dimensions (PRD §5.9) ---
-# Only melody is implemented so far (M2); the rest are placeholders for
-# when pacing/tone/elongation scorers land.
 MELODY_WEIGHT = 0.45
 PACING_WEIGHT = 0.20
 TONE_WEIGHT = 0.20
 ELONGATION_WEIGHT = 0.15
+
+# Qualitative label bands (PRD §5.9). A score >= the threshold gets that
+# label; checked high-to-low. Copy is always encouraging, never gamified.
+OVERALL_LABEL_BANDS = [
+    (85.0, "Very close"),
+    (70.0, "Getting close"),
+    (50.0, "On your way"),
+    (0.0, "Keep practicing"),
+]
+
+# --- Failure-mode detection (PRD §5.10) ---
+# If the DTW alignment between the user's and the reference's pitch contour
+# is worse than this (mean semitone gap along the path), we treat it as
+# "you didn't recite the selected verses" rather than returning a nonsense
+# low score. Hand-tuned: a careful imitation lands well under 3; reciting a
+# different passage or mostly noise pushes the mean gap far past this.
+MISMATCH_NORMALIZED_DISTANCE_THRESHOLD = 8.0
+
+# If fewer than this fraction of the user's audio frames carry a detectable
+# pitch, the recording is probably too noisy/quiet to score -- ask for a
+# quieter re-record instead of guessing.
+MIN_VOICED_FRAME_RATIO = 0.20
+
+# Upload duration bounds (PRD §5.1): reject clips outside this window before
+# spending time on analysis.
+MIN_AUDIO_DURATION_S = 2.0
+MAX_AUDIO_DURATION_S = 180.0
 
 # --- DTW alignment (PRD §5.4) ---
 # fastdtw's approximation radius. Higher = closer to exact DTW but slower;

@@ -12,6 +12,7 @@ small synthetic fixtures.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import librosa
@@ -30,12 +31,73 @@ DEFAULT_TRIM_TOP_DB = 30
 def load_audio(path: str | Path, sr: int = TARGET_SAMPLE_RATE) -> tuple[np.ndarray, int]:
     """Load an audio file as mono float32 PCM, resampled to `sr`.
 
-    librosa.load handles the format sniffing (wav/mp3/ogg/webm/m4a/...) via
-    soundfile with an audioread+ffmpeg fallback, downmixes to mono, and
-    resamples -- so every caller gets a uniform (samples,) float32 array
-    regardless of what the source file looked like.
+    Tries libsndfile (via librosa) first -- it covers WAV/FLAC/OGG directly.
+    Browser recordings are usually WebM/Opus, which libsndfile can't read,
+    so anything it rejects is routed through ffmpeg via pydub (PRD §3/§5.10:
+    "Convert browser uploads (webm/ogg) to mono WAV" / "convert via ffmpeg").
     """
-    y, loaded_sr = librosa.load(str(path), sr=sr, mono=True)
+    try:
+        y, loaded_sr = librosa.load(str(path), sr=sr, mono=True)
+        return y.astype(np.float32), loaded_sr
+    except Exception as sndfile_error:  # noqa: BLE001 - any decode failure -> try ffmpeg
+        try:
+            return _load_via_ffmpeg(path, sr)
+        except Exception as ffmpeg_error:
+            raise AudioConversionError(
+                f"Could not decode audio file {Path(path).name!r} "
+                f"(libsndfile: {sndfile_error}; ffmpeg: {ffmpeg_error})."
+            ) from ffmpeg_error
+
+
+class AudioConversionError(RuntimeError):
+    """Raised when neither libsndfile nor ffmpeg can decode an upload."""
+
+
+def _ffmpeg_binary() -> str:
+    """The ffmpeg executable to shell out to.
+
+    Resolution order:
+    1. SADA_FFMPEG / FFMPEG_BINARY -- an explicit path (local dev, or a host
+       that puts ffmpeg somewhere non-standard);
+    2. the static binary bundled with `imageio-ffmpeg`, if that package is
+       installed -- this is what makes the app work on a plain Python host
+       (e.g. Render's native runtime) with no system ffmpeg and no Docker;
+    3. "ffmpeg" on PATH (Railway/Nixpacks, Homebrew, apt, ...).
+    """
+    explicit = os.environ.get("SADA_FFMPEG") or os.environ.get("FFMPEG_BINARY")
+    if explicit:
+        return explicit
+    try:
+        import imageio_ffmpeg
+
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:  # noqa: BLE001 - package missing or no bundled binary
+        return "ffmpeg"
+
+
+def _load_via_ffmpeg(path: str | Path, sr: int) -> tuple[np.ndarray, int]:
+    """Decode any ffmpeg-supported container (WebM/Opus, m4a, ...) to mono
+    float32 at `sr` by piping a WAV stream out of ffmpeg.
+
+    Shells out directly rather than via pydub so it needs only the ffmpeg
+    binary -- no ffprobe, which isn't always installed alongside it.
+    """
+    import io
+    import subprocess
+
+    command = [
+        _ffmpeg_binary(), "-nostdin", "-loglevel", "error",
+        "-i", str(path), "-ac", "1", "-ar", str(sr), "-f", "wav", "pipe:1",
+    ]
+    proc = subprocess.run(command, capture_output=True, check=False)
+    if proc.returncode != 0 or not proc.stdout:
+        raise AudioConversionError(
+            "ffmpeg could not decode the file: "
+            + (proc.stderr.decode("utf-8", "replace").strip() or "no output produced")
+        )
+    y, loaded_sr = sf.read(io.BytesIO(proc.stdout), dtype="float32", always_2d=False)
+    if y.ndim > 1:
+        y = y.mean(axis=1)
     return y.astype(np.float32), loaded_sr
 
 

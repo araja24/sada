@@ -1,9 +1,8 @@
 """Unit tests for scripts/compare.py.
 
-Pure-logic pieces (verse-range parsing/filtering, tip formatting, reference
-loading) are tested directly; `compare()` itself is exercised end-to-end
-against a small synthetic reference bundle + fixture audio, independent of
-any live API call or scripts/build_reference.py run.
+The CLI is now a thin wrapper over `analysis.pipeline.analyze` (tested in
+test_pipeline.py): these cover verse-range parsing, the printed report, and
+that failure modes surface as a non-zero exit rather than a traceback.
 """
 
 from __future__ import annotations
@@ -14,12 +13,11 @@ import numpy as np
 import pytest
 
 from analysis.pitch import extract_pitch_contour
-from analysis.qf_client import VerseTimestamp, WordTimestamp
 from analysis.tone import extract_mfcc
 from scripts import compare
 
 
-# --- parse_verse_range / filter_verse_range -------------------------------
+# --- parse_verse_range -----------------------------------------------
 
 
 def test_parse_verse_range_single_number():
@@ -31,102 +29,54 @@ def test_parse_verse_range_span():
 
 
 def test_parse_verse_range_rejects_reversed_range():
-    with pytest.raises(compare.ComparisonError):
+    with pytest.raises(ValueError):
         compare.parse_verse_range("5-2")
 
 
-def test_filter_verse_range_keeps_only_verses_in_range():
-    verses = [
-        VerseTimestamp(verse_key=f"1:{n}", timestamp_from_ms=0, timestamp_to_ms=0, words=[])
-        for n in range(1, 8)
-    ]
-    filtered = compare.filter_verse_range(verses, (2, 4))
-    assert [v.verse_number for v in filtered] == [2, 3, 4]
+# --- print_report ---------------------------------------------------
 
 
-# --- format_tip -------------------------------------------------------------
+def _result(**overrides):
+    from analysis.pipeline import AttemptResult, PitchOverlay, Tip
 
-
-def test_format_tip_includes_verse_and_word_when_known():
-    from analysis.melody import DivergenceRegion
-
-    region = DivergenceRegion(
-        start_s=1.0,
-        end_s=1.6,
-        duration_s=0.6,
-        direction="too_high",
-        mean_diff_semitones=4.2,
-        verse_number=2,
-        word_index=3,
+    defaults = dict(
+        overall_score=78,
+        label="Getting close",
+        sub_scores={"melody": 81, "pacing": 74, "tone": 65, "elongation": 60},
+        per_verse=[{"verse": 1, "score": 84}, {"verse": 2, "score": 71}],
+        pitch_overlay=PitchOverlay(time_axis=[0.0, 1.0], reference_semitones=[0.0, 0.0],
+                                   user_semitones_aligned=[0.0, 0.0]),
+        tips=[Tip(verse=1, word_index=4, type="elongation", text="Verse 1, word 4: hold it longer.")],
     )
-    tip = compare.format_tip(region)
-    assert "verse 2" in tip
-    assert "word 3" in tip
-    assert "higher" in tip
+    defaults.update(overrides)
+    return AttemptResult(**defaults)
 
 
-def test_format_tip_falls_back_to_timestamp_when_verse_unknown():
-    from analysis.melody import DivergenceRegion
-
-    region = DivergenceRegion(
-        start_s=2.5, end_s=3.1, duration_s=0.6, direction="too_low", mean_diff_semitones=-4.0
-    )
-    tip = compare.format_tip(region)
-    assert "2.5s" in tip
-    assert "lower" in tip
+def test_print_report_shows_overall_label_subscores_and_tips(capsys):
+    compare.print_report(_result())
+    out = capsys.readouterr().out
+    assert "78/100" in out
+    assert "Getting close" in out
+    assert "Verse 1: 84/100" in out
+    assert "hold it longer" in out
 
 
-# --- load_reference_contour / load_reference_verses -------------------------
+def test_print_report_frames_tone_and_elongation_correctly(capsys):
+    compare.print_report(_result())
+    out = capsys.readouterr().out.lower()
+    assert "tone similarity" in out
+    assert "elongation timing" in out
+    assert "correctness" not in out
+    assert "tajweed" not in out
 
 
-def test_load_reference_contour_missing_bundle_raises(tmp_path):
-    with pytest.raises(compare.ComparisonError):
-        compare.load_reference_contour(tmp_path / "nonexistent")
+# --- run(): exit codes ----------------------------------------------
 
 
-def test_load_reference_verses_missing_bundle_raises(tmp_path):
-    with pytest.raises(compare.ComparisonError):
-        compare.load_reference_verses(tmp_path / "nonexistent")
-
-
-def test_load_reference_verses_round_trips_word_timestamps(tmp_path):
-    reciter_dir = tmp_path / "reciter"
-    reciter_dir.mkdir()
-    (reciter_dir / "timestamps.json").write_text(
-        json.dumps(
-            {
-                "verses": [
-                    {
-                        "verse_key": "1:1",
-                        "verse_number": 1,
-                        "timestamp_from_ms": 0,
-                        "timestamp_to_ms": 1000,
-                        "words": [{"word_index": 1, "start_ms": 0, "end_ms": 500}],
-                    }
-                ]
-            }
-        ),
-        encoding="utf-8",
-    )
-    verses = compare.load_reference_verses(reciter_dir)
-    assert len(verses) == 1
-    assert verses[0].verse_number == 1
-    assert verses[0].words[0].word_index == 1
-
-
-# --- compare(): end-to-end against a synthetic reference bundle -------------
-
-
-def _sine(freq_hz: float, duration_s: float, sr: int = 22050) -> np.ndarray:
-    t = np.linspace(0, duration_s, int(sr * duration_s), endpoint=False)
-    return (0.8 * np.sin(2 * np.pi * freq_hz * t)).astype(np.float32)
-
-
-def _write_reference_bundle(reference_dir, reciter: str, y: np.ndarray, sr: int) -> None:
-    reciter_dir = reference_dir / reciter
+def _write_bundle(reference_dir, slug, y, sr=22050):
+    reciter_dir = reference_dir / slug
     reciter_dir.mkdir(parents=True)
     contour = extract_pitch_contour(y, sr)
-    mfcc = extract_mfcc(y, sr)
     np.savez(
         reciter_dir / "features.npz",
         sample_rate=sr,
@@ -136,99 +86,40 @@ def _write_reference_bundle(reference_dir, reciter: str, y: np.ndarray, sr: int)
         semitones=contour.semitones,
         semitones_centered=contour.semitones_centered,
         median_semitone=contour.median_semitone,
-        mfcc=mfcc,
+        mfcc=extract_mfcc(y, sr),
     )
     duration_ms = int(len(y) / sr * 1000)
     (reciter_dir / "timestamps.json").write_text(
-        json.dumps(
-            {
-                "verses": [
-                    {
-                        "verse_key": "1:1",
-                        "verse_number": 1,
-                        "timestamp_from_ms": 0,
-                        "timestamp_to_ms": duration_ms,
-                        "words": [{"word_index": 1, "start_ms": 0, "end_ms": duration_ms}],
-                    }
-                ]
-            }
-        ),
+        json.dumps({"verses": [{
+            "verse_key": "1:1", "verse_number": 1,
+            "timestamp_from_ms": 0, "timestamp_to_ms": duration_ms,
+            "words": [{"word_index": 1, "start_ms": 0, "end_ms": duration_ms}],
+        }]}),
         encoding="utf-8",
     )
 
 
-def test_compare_identical_recitation_scores_highly(tmp_path, wav_file_factory):
-    sr = 22050
-    tone = _sine(220.0, 2.0, sr)
+def _sine(freq_hz, duration_s, sr=22050):
+    t = np.linspace(0, duration_s, int(sr * duration_s), endpoint=False)
+    return (0.8 * np.sin(2 * np.pi * freq_hz * t)).astype(np.float32)
 
+
+def test_run_returns_0_on_success(tmp_path, wav_file_factory, capsys):
+    y = _sine(220.0, 2.5)
     reference_dir = tmp_path / "reference"
-    _write_reference_bundle(reference_dir, "test-reciter", tone, sr)
-
-    audio_path = wav_file_factory(tone, sr=sr, name="user.wav")
-
-    result = compare.compare(audio_path, "test-reciter", "1", reference_dir)
-
-    assert result.melody.overall_score > 90.0
-    assert result.melody.per_verse_scores[1] > 90.0
-    assert result.tone.overall_score > 90.0
-    assert result.tone.per_verse_scores[1] > 90.0
-    assert result.pacing.overall_score > 90.0
-    assert result.pacing.global_tempo_ratio == pytest.approx(1.0, abs=0.1)
-    # The fixture bundle has a single word spanning the whole verse, so
-    # there's no elongation candidate to score (nothing to compare it
-    # against) -- just confirm the no-candidates path returns cleanly.
-    assert result.elongation.overall_score == pytest.approx(100.0)
+    _write_bundle(reference_dir, "r", y)
+    audio = wav_file_factory(y, name="user.wav")
+    assert compare.run(audio, "r", "1", reference_dir) == 0
 
 
-def test_compare_unknown_verse_range_raises(tmp_path, wav_file_factory):
-    sr = 22050
-    tone = _sine(220.0, 1.0, sr)
+def test_run_returns_1_on_missing_bundle(tmp_path, wav_file_factory):
+    audio = wav_file_factory(_sine(220.0, 2.5), name="user.wav")
+    assert compare.run(audio, "missing", "1-7", tmp_path / "reference") == 1
+
+
+def test_run_returns_2_on_analysis_failure(tmp_path, wav_file_factory):
+    y = _sine(220.0, 2.5)
     reference_dir = tmp_path / "reference"
-    _write_reference_bundle(reference_dir, "test-reciter", tone, sr)
-    audio_path = wav_file_factory(tone, sr=sr, name="user.wav")
-
-    with pytest.raises(compare.ComparisonError):
-        compare.compare(audio_path, "test-reciter", "5-6", reference_dir)
-
-
-def test_compare_missing_reciter_raises(tmp_path, wav_file_factory):
-    sr = 22050
-    audio_path = wav_file_factory(_sine(220.0, 1.0, sr), sr=sr, name="user.wav")
-    with pytest.raises(compare.ComparisonError):
-        compare.compare(audio_path, "nonexistent-reciter", "1-7", tmp_path / "reference")
-
-
-# --- print_report: product-level framing requirement (PRD §5.6) ------------
-
-
-def test_print_report_frames_tone_as_similarity_never_correctness(capsys):
-    from analysis.elongation import ElongationScoreResult, ElongationTip
-    from analysis.melody import MelodyScoreResult
-    from analysis.pacing import PacingScoreResult, PacingTip
-    from analysis.tone import ToneScoreResult
-
-    result = compare.CompareResult(
-        melody=MelodyScoreResult(
-            overall_score=80.0, per_verse_scores={1: 80.0}, alignment=None, divergences=[]
-        ),
-        tone=ToneScoreResult(overall_score=65.0, per_verse_scores={1: 65.0}),
-        pacing=PacingScoreResult(
-            overall_score=70.0,
-            global_tempo_ratio=1.1,
-            per_verse_scores={1: 70.0},
-            tips=[PacingTip(verse_number=1, kind="too_fast", percent_off=-30.0)],
-        ),
-        elongation=ElongationScoreResult(
-            overall_score=60.0,
-            candidates=[],
-            tips=[ElongationTip(verse_number=1, word_index=4, kind="shortfall", percent_off=-40.0)],
-        ),
-    )
-    compare.print_report(result)
-    output = capsys.readouterr().out.lower()
-
-    assert "tone similarity" in output
-    assert "elongation timing" in output
-    assert "correctness" not in output
-    assert "wrong" not in output
-    assert "tajweed" not in output
+    _write_bundle(reference_dir, "r", y)
+    silent = wav_file_factory(np.zeros(22050 * 3, dtype=np.float32), name="silent.wav")
+    assert compare.run(silent, "r", "1", reference_dir) == 2

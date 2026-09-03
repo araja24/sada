@@ -9,6 +9,7 @@ numpy
 scipy
 fastdtw
 pydub
+imageio-ffmpeg  # bundles a static ffmpeg binary; lets hosts without system ffmpeg (Render native runtime) work with no Docker -- see analysis/audio_io.py
 matplotlib
 soundfile
 
@@ -25,3 +26,4 @@ itsdangerous
 
 # Dev / testing
 pytest
+httpx  # required by fastapi.testclient

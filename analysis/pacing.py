@@ -110,6 +110,15 @@ def score_pacing(
         ref_duration_s = ref_durations_s[verse_number]
         raw_ratio = user_duration_s / ref_duration_s
         residual_ratio = raw_ratio / global_tempo_ratio
+        if residual_ratio <= 0:
+            # The alignment gave this verse ~no user time at all even though
+            # the reference clearly has it -- the user effectively skipped or
+            # rushed straight through it. That's a real pacing failure, not a
+            # reason to crash: score it 0 and flag it as far too fast.
+            per_verse_scores[verse_number] = 0.0
+            tips.append(PacingTip(verse_number=verse_number, kind="too_fast", percent_off=-100.0))
+            continue
+
         per_verse_scores[verse_number] = calibrate_pacing_score(residual_ratio)
 
         percent_off = (residual_ratio - 1.0) * 100.0

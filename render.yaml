@@ -1,0 +1,31 @@
+# Render Blueprint (https://render.com/docs/blueprint-spec).
+#
+# ffmpeg: not needed as a system package -- `imageio-ffmpeg` (in
+# requirements.txt) ships a static binary that analysis/audio_io.py picks up
+# automatically. So this runs on Render's native Python runtime, no Docker.
+#
+# Persistence: the free plan has NO persistent disk, so the SQLite DB and any
+# retained uploads are wiped on every deploy / cold start. That's fine for a
+# demo (reciter bundles come from git; the record->results flow always
+# works). For durable accounts + history, either move to a paid instance
+# with a disk (uncomment the `disk:` block and set SADA_DATA_DIR /
+# SADA_DATABASE_URL to point into it) or attach a managed Postgres and set
+# SADA_DATABASE_URL to its connection string.
+services:
+  - type: web
+    name: sada
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.10"
+      - key: SESSION_SECRET_KEY
+        generateValue: true      # generated once, then held stable by Render
+      - key: SADA_RETAIN_AUDIO
+        value: "0"               # free plan has no disk; don't accumulate uploads
+    # disk:                      # paid plans only
+    #   name: sada-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
