@@ -5,8 +5,9 @@
 (function () {
   "use strict";
 
-  var STEPS = ["welcome", "reciter", "passage", "record", "analyzing", "results"];
+  var STEPS = ["welcome", "auth", "reciter", "passage", "record", "analyzing", "results"];
   var navStack = [];
+  var authMode = "signup"; // or "login"
 
   var state = {
     reciter: null, // {id, slug, name, description}
@@ -29,8 +30,13 @@
     });
     $("to-record-btn").addEventListener("click", goRecord);
 
+    $("auth-form").addEventListener("submit", submitAuth);
+    $("auth-toggle").addEventListener("click", function () {
+      setAuthMode(authMode === "signup" ? "login" : "signup");
+    });
+
     setupRefPlayer();
-    refreshAccountNav();
+    Promise.resolve(refreshAccountNav()).then(renderRecentAttempts);
     showStep("welcome", { replace: true });
   });
 
@@ -247,49 +253,137 @@
 
     SadaApi.submitAttempt(form).then(function (attempt) {
       state.lastAttempt = attempt;
-      showStep("results");
-      SadaResults.render($("results-mount"), attempt, {
-        passage: state.passage,
-        reciterName: state.reciter.name,
-        onTryAgain: goRecord,
-      });
+      showResults(attempt);
+      renderRecentAttempts();
     }).catch(function (err) {
-      // Send them back to the record step with the friendly message (§5.10).
+      // Stay on the record step with the take intact (§5.10 friendly message).
       showStep("record");
-      SadaRecord.mount($("record-mount"), {
-        reciterName: state.reciter.name,
-        startVerse: state.startVerse,
-        endVerse: state.endVerse,
-        onSubmit: submitAttempt,
-      });
+      SadaRecord.recover();
       showError(err);
     });
   }
 
-  // --- account nav (wired fully in issue #11) -----------------
+  function showResults(attempt) {
+    showStep("results");
+    SadaResults.render($("results-mount"), attempt, {
+      passage: state.passage,
+      reciterName: state.reciter ? state.reciter.name : "the reciter",
+      onTryAgain: state.reciter ? goRecord : function () { showStep("welcome"); },
+      savePrompt: currentUser ? null : function () { setAuthMode("signup"); showStep("auth"); },
+    });
+  }
+
+  // --- account nav + auth (docs/adr/0002) --------------------
+
+  var currentUser = null;
 
   function refreshAccountNav() {
     var nav = $("account-nav");
     if (!nav) return;
-    SadaApi.me().then(function (user) {
+    return SadaApi.me().then(function (user) {
+      currentUser = user && user.email ? user : null;
       nav.hidden = false;
-      if (user && user.email) {
-        nav.innerHTML = "";
-        var who = document.createElement("span");
-        who.className = "muted";
-        who.textContent = user.email;
-        var out = document.createElement("button");
-        out.className = "btn btn-quiet back-btn";
-        out.textContent = "Log out";
-        out.addEventListener("click", function () {
-          SadaApi.logout().then(refreshAccountNav);
-        });
-        nav.appendChild(who);
-        nav.appendChild(out);
+      nav.innerHTML = "";
+      if (currentUser) {
+        nav.appendChild(textEl("span", "muted", currentUser.email));
+        nav.appendChild(navButton("Log out", function () {
+          SadaApi.logout().then(function () {
+            refreshAccountNav();
+            renderRecentAttempts();
+          });
+        }));
       } else {
-        nav.innerHTML = "";
+        nav.appendChild(navButton("Log in", function () { setAuthMode("login"); showStep("auth"); }));
+        nav.appendChild(navButton("Sign up", function () { setAuthMode("signup"); showStep("auth"); }));
       }
     }).catch(function () { /* nav is optional chrome */ });
+  }
+
+  function setAuthMode(mode) {
+    authMode = mode;
+    $("auth-title").textContent = mode === "signup" ? "Save your attempts" : "Welcome back";
+    $("auth-submit").textContent = mode === "signup" ? "Sign up" : "Log in";
+    $("auth-toggle").textContent = mode === "signup"
+      ? "I already have an account" : "I need to create an account";
+    $("auth-intro").hidden = mode === "login";
+    $("auth-password").setAttribute("autocomplete", mode === "signup" ? "new-password" : "current-password");
+  }
+
+  function submitAuth(e) {
+    e.preventDefault();
+    clearError();
+    var email = $("auth-email").value.trim();
+    var password = $("auth-password").value;
+    var submit = $("auth-submit");
+    submit.disabled = true;
+    var call = authMode === "signup" ? SadaApi.signup : SadaApi.login;
+    call(email, password).then(function () {
+      $("auth-form").reset();
+      return refreshAccountNav();
+    }).then(function () {
+      renderRecentAttempts();
+      back(); // return to wherever they came from
+    }).catch(function (err) {
+      showError(err);
+    }).then(function () {
+      submit.disabled = false;
+    });
+  }
+
+  // --- recent attempts (issue #11) --------------------------
+
+  function renderRecentAttempts() {
+    var box = $("recent-attempts");
+    if (!box) return;
+    SadaApi.recentAttempts().then(function (rows) {
+      if (!rows || !rows.length) { box.hidden = true; box.innerHTML = ""; return; }
+      box.hidden = false;
+      box.innerHTML = "";
+      box.appendChild(textEl("h2", "recent-title", currentUser ? "Your attempts" : "Your recent attempts"));
+      var ul = document.createElement("ul");
+      ul.className = "recent-list";
+      rows.forEach(function (r) {
+        var li = document.createElement("li");
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "recent-item";
+        b.innerHTML = "<span class='recent-score'>" + r.overall_score + "</span>" +
+          "<span class='recent-meta'><strong>" + esc(r.label) + "</strong>" +
+          "<span class='muted'> · verses " + r.start_verse + "–" + r.end_verse + " · " +
+          new Date(r.created_at).toLocaleDateString() + "</span></span>";
+        b.addEventListener("click", function () { openAttempt(r); });
+        li.appendChild(b);
+        ul.appendChild(li);
+      });
+      box.appendChild(ul);
+      if (!currentUser) {
+        box.appendChild(navButton("Sign up to keep these", function () {
+          setAuthMode("signup"); showStep("auth");
+        }));
+      }
+    }).catch(function () { box.hidden = true; });
+  }
+
+  function openAttempt(summary) {
+    Promise.all([SadaApi.attempt(summary.attempt_id), SadaApi.passage(summary.reciter_id)])
+      .then(function (out) {
+        var attempt = out[0];
+        state.passage = out[1];
+        state.reciter = null;
+        state.lastAttempt = attempt;
+        showResults(attempt);
+      }).catch(showError);
+  }
+
+  function esc(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+  function textEl(tag, cls, text) {
+    var n = document.createElement(tag); if (cls) n.className = cls; n.textContent = text; return n;
+  }
+  function navButton(label, onClick) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "btn btn-quiet back-btn"; b.textContent = label;
+    b.addEventListener("click", onClick);
+    return b;
   }
 
   // --- errors ------------------------------------------------

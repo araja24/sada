@@ -1,47 +1,86 @@
 # Sada
 
-A web app that helps you match your Quran recitation *style* — melody, pacing, tone, and elongation timing — to a specific reciter's. See [`INITIAL_PROJECT_PLAN.md`](./INITIAL_PROJECT_PLAN.md) for the full product spec, and [`CONTEXT.md`](./CONTEXT.md) for the project's domain glossary and key decisions.
+A web app that helps you match your Quran recitation *style* — melody, pacing, tone, and elongation timing — to a specific professional reciter's. It is a **style coach, not a correctness checker**: it never grades tajweed or articulation correctness.
 
-This is a **style coach, not a correctness checker** — it never grades tajweed/articulation correctness.
+See [`INITIAL_PROJECT_PLAN.md`](./INITIAL_PROJECT_PLAN.md) for the full product spec, [`CONTEXT.md`](./CONTEXT.md) for the domain glossary, and [`docs/adr/`](./docs/adr/) for key decisions.
 
-## Status
+## How it works
 
-Early build. Currently on **Milestone 1 (reference data)**: fetching Maher Al Muaiqly's Al-Fatiha recitation + word timestamps from the Quran Foundation API and precomputing reference audio features.
+1. Pick a reciter and a verse range of Surah Al-Fatiha, optionally listen to the reference.
+2. Record yourself reciting it in one take (3:00 cap).
+3. Get an overall similarity score + encouraging label, four sub-scores (melody, pacing, tone similarity, elongation timing), per-verse scores, a reference-vs-you pitch-contour chart, and located, specific tips.
 
-## Setup
+The analysis pipeline (`analysis/`) is pure Python — pitch extraction (`librosa.pyin`), median-centering for transposition invariance, DTW alignment, then four independent scorers combined by weight. It's fully unit-tested in isolation from the web layer.
 
-1. **Python 3.11+** and **ffmpeg** (on PATH) are required. On Windows: `winget install --id Gyan.FFmpeg -e`.
-2. Create and activate a virtualenv, then install dependencies:
-   ```bash
-   python -m venv .venv
-   .venv\Scripts\activate      # Windows
-   pip install -r requirements.txt
-   ```
-3. Copy `.env.example` to `.env` and fill in your [Quran Foundation API](https://api-docs.quran.foundation/) OAuth2 client credentials.
+## Setup (local)
 
-## Building the reference data
-
-Milestone 1: fetch Maher Al Muaiqly's Al-Fatiha audio + word timestamps and precompute reference features (pitch contour, MFCCs, per-word/per-verse durations). Requires `QF_CLIENT_ID`/`QF_CLIENT_SECRET` in `.env`:
+Requires **Python 3.11+** and **ffmpeg** on `PATH` (browser recordings are WebM/Opus; ffmpeg converts them).
+On Windows: `winget install --id Gyan.FFmpeg -e`. On macOS: `brew install ffmpeg`. On Debian/Ubuntu: `apt install ffmpeg`.
 
 ```bash
-python scripts/build_reference.py
-# Also save a pitch-contour plot for one verse, as a sanity check:
-python scripts/build_reference.py --plot-verse 1
+python -m venv .venv
+.venv\Scripts\activate          # Windows;  source .venv/bin/activate on macOS/Linux
+pip install -r requirements.txt
+cp .env.example .env            # then fill in SESSION_SECRET_KEY (and QF creds if building reference data)
 ```
 
-This caches everything under `data/reference/<reciter_slug>/` (`audio.wav`, `features.npz`, `timestamps.json`, `passage.json`, and optionally `plots/verse_N_pitch.png`). It hits the live API and is meant to be run manually, not automatically or per-request.
+## Build the reference data
 
-**No Quran Foundation credentials yet?** The same v4 API is served unauthenticated at `api.quran.com`, which is enough to build a real reference cache and work on everything downstream. See [ADR-0001](./docs/adr/0001-reference-data-source.md):
+The app needs at least one reciter's precomputed Al-Fatiha features under `data/reference/`. This is a one-time manual step (never run per-request):
 
 ```bash
-python scripts/build_reference.py --source public-mirror \
-    --reciter-name "Mahmoud Khalil Al-Husary" --reciter-id 6
+# With Quran Foundation API credentials in .env (QF_CLIENT_ID / QF_CLIENT_SECRET):
+python scripts/build_reference.py --reciter-name "Mishari Rashid al-`Afasy"
+
+# No credentials yet? Use the unauthenticated public mirror (see ADR-0001):
+python scripts/build_reference.py --source public-mirror --reciter-name "Mishari Rashid al-`Afasy" --reciter-id 7
 ```
+
+Each bundle is cached under `data/reference/<slug>/` (`audio.wav`, `features.npz`, `timestamps.json`, `passage.json`). `data/reference/` is gitignored — it's regenerable.
+
+## Run
+
+```bash
+uvicorn app.main:app --reload
+```
+
+- App + full flow: <http://localhost:8000/>
+- API docs: <http://localhost:8000/docs>
+
+The single FastAPI service serves both the JSON API (`/api/*`) and the static frontend (`frontend/`). Reciters are seeded into SQLite on startup from whatever bundles exist under `data/reference/`.
+
+## CLI (no web)
+
+```bash
+python scripts/compare.py --audio my_recitation.wav --reciter mishari_rashid_al_afasy --verses 1-7
+```
+
+Prints the overall score + label, all four sub-scores, per-verse scores, and the combined tips list.
+
+## Test
+
+```bash
+pytest -q
+```
+
+## Deploy (Railway)
+
+The repo ships a `nixpacks.toml` (adds `ffmpeg` to the image) and a `Procfile`.
+
+1. Create a Railway project from this repo. Nixpacks builds it automatically.
+2. Add a **Volume** mounted at `/data`.
+3. Set environment variables:
+   - `SESSION_SECRET_KEY` — a real secret (`python -c "import secrets; print(secrets.token_hex(32))"`). **Never commit this.**
+   - `SADA_DATA_DIR=/data` and `SADA_DATABASE_URL=sqlite:////data/sada.db` so the DB and attempt history survive redeploys.
+4. The reference bundle isn't in git. Either commit a bundle for the deploy, run `scripts/build_reference.py` in a one-off Railway shell writing into `/data/reference` (with `SADA_REFERENCE_DIR=/data/reference`), or bake it into the image.
+
+Render works the same way via a Docker or native build with `ffmpeg` installed and the same env vars.
 
 ## Project layout
 
-- `analysis/` — pure-Python audio analysis pipeline (pitch, tone, alignment, scoring). No FastAPI imports here; unit-testable in isolation.
-- `scripts/build_reference.py` — one-time/manual script that fetches reciter audio + timestamps and precomputes reference features into `data/reference/`.
-- `data/reference/` — precomputed reference features (regenerable, gitignored).
-- `data/attempts/` — user-submitted recordings (private, gitignored).
-- `tests/` — unit tests for `analysis/`.
+- `analysis/` — pure-Python analysis pipeline (pitch, tone, alignment, four scorers, `pipeline.analyze`). No web imports.
+- `app/` — FastAPI layer: endpoints, SQLite persistence, self-built email+password accounts (ADR-0002).
+- `frontend/` — vanilla HTML/CSS/JS single-page flow, served by `app`.
+- `scripts/build_reference.py` — manual reference-data builder. `scripts/compare.py` — CLI scorer.
+- `data/reference/` (bundles), `data/attempts/` (uploads) — both gitignored.
+- `tests/` — unit + API tests.

@@ -279,6 +279,21 @@ def test_guest_claim_reattaches_prior_attempts(client, reciter_id):
     assert fresh.get("/api/attempts").json() == []
 
 
+def test_logout_keeps_guest_session_identity(client, reciter_id):
+    # Guest attempt -> signup (claims it) -> logout -> still the same guest
+    # session, so the claimed-then-released history is gone for the guest but
+    # the session_id is stable (a fresh guest attempt lands under it).
+    _submit(client, reciter_id)
+    client.post("/api/auth/signup", json={"email": "logout@b.com", "password": "hunter2pw"})
+    assert len(client.get("/api/attempts").json()) == 1  # as the user
+    client.post("/api/auth/logout")
+    # Back to guest: the earlier attempt now belongs to the account, not the
+    # guest session, so the guest sees none of it.
+    assert client.get("/api/attempts").json() == []
+    _submit(client, reciter_id)
+    assert len(client.get("/api/attempts").json()) == 1  # new guest attempt
+
+
 def test_docs_available(client):
     assert client.get("/docs").status_code == 200
     assert client.get("/openapi.json").status_code == 200
@@ -289,4 +304,7 @@ def test_static_frontend_is_served(client):
     assert root.status_code == 200
     assert "text/html" in root.headers["content-type"]
     assert client.get("/js/app.js").status_code == 200
+    assert client.get("/js/record.js").status_code == 200
+    assert client.get("/js/results.js").status_code == 200
     assert client.get("/css/styles.css").status_code == 200
+    assert client.get("/favicon.svg").status_code == 200

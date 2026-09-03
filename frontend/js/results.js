@@ -49,9 +49,16 @@
     var tipsWrap = el("div", "tips-wrap");
     container.appendChild(tipsWrap);
 
-    var again = button("btn btn-primary try-again", "Try again");
+    var actions = el("div", "results-actions");
+    var again = button("btn btn-primary", "Try again");
     again.addEventListener("click", opts.onTryAgain);
-    container.appendChild(again);
+    actions.appendChild(again);
+    if (opts.savePrompt) {
+      var save = button("btn btn-quiet", "Save your attempts");
+      save.addEventListener("click", opts.savePrompt);
+      actions.appendChild(save);
+    }
+    container.appendChild(actions);
 
     function paintChips() {
       container.querySelectorAll(".verse-chip").forEach(function (c) {

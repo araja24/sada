@@ -28,6 +28,31 @@
         not a correctness or tajweed checker.
       </p>
       <button class="btn btn-primary" id="start-btn">Start practicing</button>
+
+      <div class="recent" id="recent-attempts" hidden></div>
+    </section>
+
+    <!-- STEP: sign in / sign up -->
+    <section class="step" id="step-auth" hidden aria-labelledby="auth-title">
+      <button class="btn btn-quiet back-btn" data-back>← Back</button>
+      <h2 id="auth-title">Save your attempts</h2>
+      <p class="muted" id="auth-intro">
+        Create an account (or log in) to keep your recitation history across
+        devices. Any attempts you've already made in this browser will move to
+        your account.
+      </p>
+      <form id="auth-form" novalidate>
+        <div class="field">
+          <label for="auth-email">Email</label>
+          <input type="email" id="auth-email" autocomplete="email" required />
+        </div>
+        <div class="field">
+          <label for="auth-password">Password <span class="muted">(at least 8 characters)</span></label>
+          <input type="password" id="auth-password" autocomplete="current-password" minlength="8" required />
+        </div>
+        <button class="btn btn-primary" id="auth-submit" type="submit">Sign up</button>
+        <button class="btn btn-quiet" id="auth-toggle" type="button">I already have an account</button>
+      </form>
     </section>
 
     <!-- STEP: choose reciter -->
@@ -84,8 +109,10 @@
 
   <footer class="site-footer">
     <p id="privacy-note">
-      A guest session stores only your attempts, keyed to a random ID in a cookie.
-      No account, no personal data.
+      As a guest, Sada stores only your recitation attempts, keyed to a random
+      ID in a cookie — no account, no personal data. If you sign up, we also
+      store your email and a one-way hash of your password so your attempt
+      history follows you across devices. We never share any of it.
     </p>
   </footer>
 

@@ -1,0 +1,12 @@
+# Railway / Nixpacks build config.
+#
+# Nixpacks already detects the Python app (requirements.txt) and builds a
+# venv on its own. The only thing it can't infer is that the analysis
+# pipeline shells out to `ffmpeg` to decode browser recordings (webm/opus)
+# -- see analysis/audio_io.py and INITIAL_PROJECT_PLAN.md §3 -- so ffmpeg is
+# added to the runtime here.
+[phases.setup]
+aptPkgs = ["ffmpeg"]
+
+[start]
+cmd = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
