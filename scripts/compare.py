@@ -26,7 +26,7 @@ import numpy as np
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
-from analysis import audio_io, pitch, tone  # noqa: E402
+from analysis import audio_io, pacing, pitch, tone  # noqa: E402
 from analysis.melody import DivergenceRegion, MelodyScoreResult, score_melody, voiced_series  # noqa: E402
 from analysis.qf_client import AL_FATIHA_CHAPTER_NUMBER, VerseTimestamp, WordTimestamp  # noqa: E402
 
@@ -37,6 +37,7 @@ DEFAULT_REFERENCE_DIR = REPO_ROOT / "data" / "reference"
 class CompareResult:
     melody: MelodyScoreResult
     tone: tone.ToneScoreResult
+    pacing: pacing.PacingScoreResult
 
 
 class ComparisonError(RuntimeError):
@@ -131,8 +132,21 @@ def format_tip(region: DivergenceRegion) -> str:
     )
 
 
+def format_pacing_tip(tip: pacing.PacingTip) -> str:
+    if tip.kind == "missing_pause":
+        return (
+            f"Verse {tip.verse_number}: the reciter pauses ~{tip.ref_pause_s:.1f}s here; "
+            f"you paused only ~{tip.user_pause_s:.1f}s. Take a breath before continuing."
+        )
+    direction_word = "faster" if tip.kind == "too_fast" else "slower"
+    return (
+        f"Verse {tip.verse_number}: you recited this ~{abs(tip.percent_off):.0f}% {direction_word} "
+        f"than your own average pace for this passage."
+    )
+
+
 def print_report(result: CompareResult) -> None:
-    melody, tone_result = result.melody, result.tone
+    melody, tone_result, pacing_result = result.melody, result.tone, result.pacing
 
     print()
     print(f"Melody score: {melody.overall_score:.0f}/100")
@@ -152,12 +166,23 @@ def print_report(result: CompareResult) -> None:
             print(f"  Verse {verse_number}: {tone_result.per_verse_scores[verse_number]:.0f}/100")
 
     print()
-    if melody.divergences:
+    print(f"Pacing score: {pacing_result.overall_score:.0f}/100")
+    print(f"(Overall tempo: {pacing_result.global_tempo_ratio:.2f}x the reference's pace.)")
+    if pacing_result.per_verse_scores:
+        print("Per-verse pacing scores:")
+        for verse_number in sorted(pacing_result.per_verse_scores):
+            print(f"  Verse {verse_number}: {pacing_result.per_verse_scores[verse_number]:.0f}/100")
+
+    print()
+    tips = list(melody.divergences) + list(pacing_result.tips)
+    if tips:
         print("Tips:")
         for region in melody.divergences:
             print(f"  - {format_tip(region)}")
+        for tip in pacing_result.tips:
+            print(f"  - {format_pacing_tip(tip)}")
     else:
-        print("No significant melodic divergences detected.")
+        print("No significant issues detected.")
 
 
 def compare(
@@ -204,7 +229,15 @@ def compare(
         ref_verses=verses_in_range,
     )
 
-    return CompareResult(melody=melody_result, tone=tone_result)
+    print("Scoring pacing...")
+    pacing_result = pacing.score_pacing(
+        melody_result.alignment,
+        voiced_series(user_contour),
+        voiced_series(ref_contour),
+        ref_verses=verses_in_range,
+    )
+
+    return CompareResult(melody=melody_result, tone=tone_result, pacing=pacing_result)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
