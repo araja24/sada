@@ -172,6 +172,8 @@ def test_compare_identical_recitation_scores_highly(tmp_path, wav_file_factory):
     assert result.melody.per_verse_scores[1] > 90.0
     assert result.tone.overall_score > 90.0
     assert result.tone.per_verse_scores[1] > 90.0
+    assert result.pacing.overall_score > 90.0
+    assert result.pacing.global_tempo_ratio == pytest.approx(1.0, abs=0.1)
 
 
 def test_compare_unknown_verse_range_raises(tmp_path, wav_file_factory):
@@ -197,6 +199,7 @@ def test_compare_missing_reciter_raises(tmp_path, wav_file_factory):
 
 def test_print_report_frames_tone_as_similarity_never_correctness(capsys):
     from analysis.melody import MelodyScoreResult
+    from analysis.pacing import PacingScoreResult, PacingTip
     from analysis.tone import ToneScoreResult
 
     result = compare.CompareResult(
@@ -204,6 +207,12 @@ def test_print_report_frames_tone_as_similarity_never_correctness(capsys):
             overall_score=80.0, per_verse_scores={1: 80.0}, alignment=None, divergences=[]
         ),
         tone=ToneScoreResult(overall_score=65.0, per_verse_scores={1: 65.0}),
+        pacing=PacingScoreResult(
+            overall_score=70.0,
+            global_tempo_ratio=1.1,
+            per_verse_scores={1: 70.0},
+            tips=[PacingTip(verse_number=1, kind="too_fast", percent_off=-30.0)],
+        ),
     )
     compare.print_report(result)
     output = capsys.readouterr().out.lower()
