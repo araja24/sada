@@ -11,6 +11,7 @@ exactly one alignment algorithm in the codebase, not one per dimension.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Hashable
 
 import numpy as np
 from fastdtw import fastdtw
@@ -62,22 +63,35 @@ def align_sequences(
     )
 
 
+def path_indices_by_span(
+    path: list[tuple[int, int]],
+    ref_times: np.ndarray,
+    spans: list[tuple[Hashable, int, int]],
+) -> dict[Hashable, list[int]]:
+    """For each (key, start_ms, end_ms) span, which positions in `path` land
+    inside it (by ref time).
+
+    The generic primitive behind every per-verse *and* per-word scorer
+    (melody/tone bucket by verse; elongation buckets by word): `ref_times`
+    is whatever per-frame time array the path's ref-indices index into
+    (e.g. a voiced pitch contour's `.times`), and must line up with the
+    ref-index half of `path`. A ref frame that falls in more than one span
+    (only possible if spans overlap or touch) is assigned to the first
+    span that contains it, not duplicated.
+    """
+    ranges: dict[Hashable, list[int]] = {key: [] for key, _start, _end in spans}
+    for i, (_u_idx, r_idx) in enumerate(path):
+        ref_t_ms = ref_times[r_idx] * 1000.0
+        for key, start_ms, end_ms in spans:
+            if start_ms <= ref_t_ms <= end_ms:
+                ranges[key].append(i)
+                break
+    return ranges
+
+
 def path_indices_by_verse(
     path: list[tuple[int, int]], ref_times: np.ndarray, verses: list[VerseTimestamp]
 ) -> dict[int, list[int]]:
-    """For each verse, which positions in `path` land inside it (by ref time).
-
-    Shared by every per-verse scorer (melody, tone, ...) that needs to
-    restrict the one alignment path to a single verse's span: `ref_times`
-    is whatever per-frame time array the path's ref-indices index into
-    (e.g. a voiced pitch contour's `.times`), and must line up with the
-    ref-index half of `path`.
-    """
-    ranges: dict[int, list[int]] = {v.verse_number: [] for v in verses}
-    for i, (_u_idx, r_idx) in enumerate(path):
-        ref_t_ms = ref_times[r_idx] * 1000.0
-        for v in verses:
-            if v.timestamp_from_ms <= ref_t_ms <= v.timestamp_to_ms:
-                ranges[v.verse_number].append(i)
-                break
-    return ranges
+    """`path_indices_by_span`, keyed by verse number -- see there for details."""
+    spans = [(v.verse_number, v.timestamp_from_ms, v.timestamp_to_ms) for v in verses]
+    return path_indices_by_span(path, ref_times, spans)

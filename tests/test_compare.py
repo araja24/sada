@@ -174,6 +174,10 @@ def test_compare_identical_recitation_scores_highly(tmp_path, wav_file_factory):
     assert result.tone.per_verse_scores[1] > 90.0
     assert result.pacing.overall_score > 90.0
     assert result.pacing.global_tempo_ratio == pytest.approx(1.0, abs=0.1)
+    # The fixture bundle has a single word spanning the whole verse, so
+    # there's no elongation candidate to score (nothing to compare it
+    # against) -- just confirm the no-candidates path returns cleanly.
+    assert result.elongation.overall_score == pytest.approx(100.0)
 
 
 def test_compare_unknown_verse_range_raises(tmp_path, wav_file_factory):
@@ -198,6 +202,7 @@ def test_compare_missing_reciter_raises(tmp_path, wav_file_factory):
 
 
 def test_print_report_frames_tone_as_similarity_never_correctness(capsys):
+    from analysis.elongation import ElongationScoreResult, ElongationTip
     from analysis.melody import MelodyScoreResult
     from analysis.pacing import PacingScoreResult, PacingTip
     from analysis.tone import ToneScoreResult
@@ -213,10 +218,17 @@ def test_print_report_frames_tone_as_similarity_never_correctness(capsys):
             per_verse_scores={1: 70.0},
             tips=[PacingTip(verse_number=1, kind="too_fast", percent_off=-30.0)],
         ),
+        elongation=ElongationScoreResult(
+            overall_score=60.0,
+            candidates=[],
+            tips=[ElongationTip(verse_number=1, word_index=4, kind="shortfall", percent_off=-40.0)],
+        ),
     )
     compare.print_report(result)
     output = capsys.readouterr().out.lower()
 
     assert "tone similarity" in output
+    assert "elongation timing" in output
     assert "correctness" not in output
     assert "wrong" not in output
+    assert "tajweed" not in output
