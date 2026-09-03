@@ -56,11 +56,23 @@ class AudioConversionError(RuntimeError):
 def _ffmpeg_binary() -> str:
     """The ffmpeg executable to shell out to.
 
-    SADA_FFMPEG / FFMPEG_BINARY let a machine without ffmpeg on PATH (local
-    dev) point at an explicit binary; the deployed image installs ffmpeg
-    normally and this falls back to "ffmpeg".
+    Resolution order:
+    1. SADA_FFMPEG / FFMPEG_BINARY -- an explicit path (local dev, or a host
+       that puts ffmpeg somewhere non-standard);
+    2. the static binary bundled with `imageio-ffmpeg`, if that package is
+       installed -- this is what makes the app work on a plain Python host
+       (e.g. Render's native runtime) with no system ffmpeg and no Docker;
+    3. "ffmpeg" on PATH (Railway/Nixpacks, Homebrew, apt, ...).
     """
-    return os.environ.get("SADA_FFMPEG") or os.environ.get("FFMPEG_BINARY") or "ffmpeg"
+    explicit = os.environ.get("SADA_FFMPEG") or os.environ.get("FFMPEG_BINARY")
+    if explicit:
+        return explicit
+    try:
+        import imageio_ffmpeg
+
+        return imageio_ffmpeg.get_ffmpeg_exe()
+    except Exception:  # noqa: BLE001 - package missing or no bundled binary
+        return "ffmpeg"
 
 
 def _load_via_ffmpeg(path: str | Path, sr: int) -> tuple[np.ndarray, int]:

@@ -63,18 +63,39 @@ Prints the overall score + label, all four sub-scores, per-verse scores, and the
 pytest -q
 ```
 
-## Deploy (Railway)
+## Deploy
 
-The repo ships a `nixpacks.toml` (adds `ffmpeg` to the image) and a `Procfile`.
+`imageio-ffmpeg` (in `requirements.txt`) ships a static ffmpeg binary that
+`analysis/audio_io.py` finds automatically, so **no Docker and no system
+ffmpeg package are needed** on either host below.
 
-1. Create a Railway project from this repo. Nixpacks builds it automatically.
+### Render (`render.yaml` blueprint)
+
+1. Commit a reference bundle so the deploy has a reciter (it's gitignored by default):
+   ```bash
+   git add -f data/reference/<slug>
+   git commit -m "Add reference bundle for deploy"
+   ```
+2. In Render: **New → Blueprint**, point it at this repo. `render.yaml` sets the
+   build/start commands and generates a stable `SESSION_SECRET_KEY`.
+3. Open the `*.onrender.com` URL.
+
+The free plan has **no persistent disk**, so the SQLite DB and uploads reset on
+each deploy/cold-start — fine for a demo (the record→results flow always works;
+reciters re-seed from the committed bundle). For durable accounts + history,
+use a paid instance with a disk (uncomment the `disk:` block in `render.yaml`,
+then set `SADA_DATA_DIR` / `SADA_DATABASE_URL` into it) or attach a managed
+Postgres and point `SADA_DATABASE_URL` at it.
+
+### Railway (`nixpacks.toml` + `Procfile`)
+
+1. Create a Railway project from this repo (Nixpacks builds it automatically).
 2. Add a **Volume** mounted at `/data`.
-3. Set environment variables:
-   - `SESSION_SECRET_KEY` — a real secret (`python -c "import secrets; print(secrets.token_hex(32))"`). **Never commit this.**
-   - `SADA_DATA_DIR=/data` and `SADA_DATABASE_URL=sqlite:////data/sada.db` so the DB and attempt history survive redeploys.
-4. The reference bundle isn't in git. Either commit a bundle for the deploy, run `scripts/build_reference.py` in a one-off Railway shell writing into `/data/reference` (with `SADA_REFERENCE_DIR=/data/reference`), or bake it into the image.
-
-Render works the same way via a Docker or native build with `ffmpeg` installed and the same env vars.
+3. Set env vars: `SESSION_SECRET_KEY` (a real secret — never commit it),
+   `SADA_DATA_DIR=/data`, `SADA_DATABASE_URL=sqlite:////data/sada.db`.
+4. Provide a reference bundle: commit one (as above), or run
+   `scripts/build_reference.py` in a one-off shell with
+   `SADA_REFERENCE_DIR=/data/reference`.
 
 ## Project layout
 
