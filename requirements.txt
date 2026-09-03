@@ -19,5 +19,9 @@ python-dotenv
 # Persistence (M3)
 sqlalchemy
 
+# Auth (M3) -- see docs/adr/0002-user-accounts.md
+bcrypt
+itsdangerous
+
 # Dev / testing
 pytest
