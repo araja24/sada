@@ -282,3 +282,11 @@ def test_guest_claim_reattaches_prior_attempts(client, reciter_id):
 def test_docs_available(client):
     assert client.get("/docs").status_code == 200
     assert client.get("/openapi.json").status_code == 200
+
+
+def test_static_frontend_is_served(client):
+    root = client.get("/")
+    assert root.status_code == 200
+    assert "text/html" in root.headers["content-type"]
+    assert client.get("/js/app.js").status_code == 200
+    assert client.get("/css/styles.css").status_code == 200

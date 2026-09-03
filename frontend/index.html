@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sada — recitation style coach</title>
+  <meta name="description" content="Match the style of your Quran recitation — melody, pacing, tone, elongation — to a professional reciter's." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="/" aria-label="Sada home">صدى<span>Sada</span></a>
+    <nav class="account-nav" id="account-nav" hidden></nav>
+  </header>
+
+  <main id="app">
+    <!-- STEP: welcome -->
+    <section class="step" id="step-welcome" aria-labelledby="welcome-title">
+      <h1 id="welcome-title">Echo a reciter's style</h1>
+      <p class="lede">
+        Sada listens to how you recite Surah Al-Fatiha and compares the
+        <em>style</em> of your delivery — melody, pacing, tone, and elongation
+        timing — to a professional reciter you choose. It is a practice companion,
+        not a correctness or tajweed checker.
+      </p>
+      <button class="btn btn-primary" id="start-btn">Start practicing</button>
+    </section>
+
+    <!-- STEP: choose reciter -->
+    <section class="step" id="step-reciter" hidden aria-labelledby="reciter-title">
+      <button class="btn btn-quiet back-btn" data-back>← Back</button>
+      <h2 id="reciter-title">Choose a reciter to echo</h2>
+      <p class="muted">Your recitation will be compared to this reciter's recorded Al-Fatiha.</p>
+      <div class="card-grid" id="reciter-list" aria-live="polite"></div>
+    </section>
+
+    <!-- STEP: choose passage / verse range -->
+    <section class="step" id="step-passage" hidden aria-labelledby="passage-title">
+      <button class="btn btn-quiet back-btn" data-back>← Back</button>
+      <h2 id="passage-title">Choose your verses</h2>
+      <p class="muted">
+        Tap a verse to set where you'll start, then tap another to set where you'll
+        stop. Default is the whole surah.
+      </p>
+      <ol class="verse-list" id="verse-list" dir="rtl" lang="ar" aria-live="polite"></ol>
+
+      <div class="passage-actions">
+        <div class="range-readout" id="range-readout"></div>
+        <div class="ref-player" id="ref-player" hidden>
+          <button class="btn btn-quiet" id="ref-play-btn" aria-pressed="false">▶ Listen to the reciter</button>
+          <audio id="ref-audio" preload="none"></audio>
+        </div>
+        <button class="btn btn-primary" id="to-record-btn">Continue to recording</button>
+      </div>
+    </section>
+
+    <!-- STEP: record (issue #9) -->
+    <section class="step" id="step-record" hidden aria-labelledby="record-title">
+      <button class="btn btn-quiet back-btn" data-back>← Back</button>
+      <h2 id="record-title">Record your recitation</h2>
+      <div id="record-mount"></div>
+    </section>
+
+    <!-- STEP: analyzing -->
+    <section class="step step-centered" id="step-analyzing" hidden aria-labelledby="analyzing-title">
+      <div class="spinner" aria-hidden="true"></div>
+      <h2 id="analyzing-title">Listening to your recitation…</h2>
+      <p class="muted">This usually takes a few seconds.</p>
+    </section>
+
+    <!-- STEP: results (issue #10) -->
+    <section class="step" id="step-results" hidden aria-labelledby="results-title">
+      <h2 id="results-title" class="visually-hidden">Your results</h2>
+      <div id="results-mount"></div>
+    </section>
+
+    <!-- error banner -->
+    <div class="error-banner" id="error-banner" role="alert" hidden></div>
+  </main>
+
+  <footer class="site-footer">
+    <p id="privacy-note">
+      A guest session stores only your attempts, keyed to a random ID in a cookie.
+      No account, no personal data.
+    </p>
+  </footer>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/record.js"></script>
+  <script src="/js/results.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
