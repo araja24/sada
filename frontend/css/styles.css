@@ -131,6 +131,55 @@ h2 { font-size: 1.5rem; margin: .25rem 0 .75rem; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* --- results (issue #10) --- */
+.overall { text-align: center; margin: 1rem 0 1.75rem; }
+.overall-score { font-size: 4rem; font-weight: 600; line-height: 1; color: var(--accent); }
+.overall-outof { font-size: 1.1rem; color: var(--ink-soft); font-weight: 400; margin-left: .35rem; }
+.overall-label { font-size: 1.3rem; margin-top: .35rem; }
+
+.subscore-grid {
+  display: grid; gap: .9rem; grid-template-columns: 1fr 1fr; margin-bottom: 1.75rem;
+}
+@media (min-width: 40rem) { .subscore-grid { grid-template-columns: repeat(4, 1fr); } }
+.subscore-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: .9rem;
+}
+.subscore-name { font-size: .8rem; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .04em; }
+.subscore-val { font-size: 1.8rem; font-weight: 600; }
+.subscore-meter { height: 5px; background: var(--bg); border-radius: 999px; overflow: hidden; margin: .3rem 0 .5rem; }
+.subscore-meter span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.subscore-hint { font-size: .78rem; margin: 0; line-height: 1.4; }
+
+.verse-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.5rem; }
+.verse-chip {
+  display: inline-flex; align-items: baseline; gap: .35rem;
+  border: 1px solid var(--line); background: var(--surface); border-radius: 999px;
+  padding: .35rem .8rem; cursor: pointer; font: inherit;
+}
+.verse-chip:hover { border-color: var(--accent); }
+.verse-chip.focused { background: var(--accent); color: #fff; border-color: var(--accent); }
+.vc-num { font-size: .78rem; color: var(--ink-soft); }
+.verse-chip.focused .vc-num { color: #dfeae6; }
+.vc-score { font-weight: 600; }
+
+.chart-wrap { margin: 0 0 1.75rem; }
+.pitch-chart {
+  width: 100%; height: 260px; display: block;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.chart-wrap figcaption { margin-top: .5rem; font-size: .85rem; }
+.key { display: inline-block; width: 14px; height: 3px; vertical-align: middle; border-radius: 2px; }
+.key-ref { background: #3f6f5e; }
+.key-you { background: #c1873b; }
+
+.tips-wrap { margin-bottom: 1.75rem; }
+.tip-group h4 { margin: 1rem 0 .4rem; font-size: 1rem; }
+.tip-list { margin: 0; padding-left: 1.1rem; display: grid; gap: .4rem; }
+.tip { line-height: 1.5; }
+
+.try-again { display: block; margin: 0 auto; }
+
 /* --- error banner --- */
 .error-banner {
   margin-top: 1.5rem; padding: .9rem 1.1rem; border-radius: var(--radius);

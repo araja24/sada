@@ -38,6 +38,16 @@ def _validate_verse_range(start_verse: int, end_verse: int) -> None:
         )
 
 
+def _safe_unlink(path: Path) -> None:
+    """Best-effort delete. On Windows a decode backend can still hold the
+    handle briefly after an error; an orphaned upload is harmless and gets
+    cleaned up later, so never let cleanup turn a 422 into a 500."""
+    try:
+        path.unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
 def _save_upload(audio: UploadFile, data: bytes) -> Path:
     suffix = Path(audio.filename or "").suffix.lower()
     if suffix not in settings.ACCEPTED_AUDIO_EXTENSIONS:
@@ -94,10 +104,10 @@ async def create_attempt(
         result = pipeline.analyze(audio_path, bundle, start_verse, end_verse)
     except pipeline.AnalysisError as exc:
         # PRD §5.10: friendly, actionable message -- not a 500.
-        audio_path.unlink(missing_ok=True)
+        _safe_unlink(audio_path)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except FileNotFoundError as exc:
-        audio_path.unlink(missing_ok=True)
+        _safe_unlink(audio_path)
         raise HTTPException(
             status_code=503, detail="This reciter's reference data isn't available right now."
         ) from exc
@@ -118,7 +128,7 @@ async def create_attempt(
         audio_path=str(audio_path) if settings.RETAIN_AUDIO else None,
     )
     if not settings.RETAIN_AUDIO:
-        audio_path.unlink(missing_ok=True)
+        _safe_unlink(audio_path)
 
     db.add(attempt)
     db.commit()
