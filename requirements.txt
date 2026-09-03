@@ -25,3 +25,4 @@ itsdangerous
 
 # Dev / testing
 pytest
+httpx  # required by fastapi.testclient
