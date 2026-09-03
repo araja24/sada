@@ -28,7 +28,7 @@ A Muslim who already knows the words of the surah and wants to improve the beaut
 - Post-recording analysis (upload → analyze → results). **No real-time analysis in v1.**
 - Four scored dimensions (see §5): melody, pacing, tone similarity, elongation timing.
 - Results page with overall score, per-verse breakdown, pitch-contour overlay visualization, and a list of specific improvement tips.
-- No user accounts. Attempts may be stored locally (SQLite) with an anonymous session ID for a simple "recent attempts" list.
+- User accounts (email+password; Google OAuth planned as a later addition), plus guest use: an unauthenticated visitor gets an anonymous session ID and can record/see "recent attempts" same as before, and those attempts are attached to their account on signup/login. See `docs/adr/0002-user-accounts.md` for the auth design (self-built, no hosted provider) and exactly how the guest→account handoff works.
 
 ### Explicitly OUT of scope (v1) — do not build, do not stub with fake implementations
 - **Articulation-level tajweed checking** (makharij, ghunnah, qalqalah, letter-articulation correctness). This requires phoneme-level Arabic ASR and is a v2+ research item. Do NOT fake this with heuristics and present it as tajweed correctness.
@@ -215,7 +215,7 @@ Base path `/api`. FastAPI also serves the static frontend from `/`.
 
 ## 11. Notes for the AI coding assistant
 
-- Do not add frameworks, ORMs, task queues, Docker, or auth unless asked. Keep it simple.
+- Do not add frameworks, ORMs, task queues, or Docker unless asked. Keep it simple. (Auth has been asked for -- see `docs/adr/0002-user-accounts.md` -- but keep it minimal: no hosted auth provider, no new frameworks to get it.)
 - Do not fabricate tajweed/articulation analysis. If a feature request seems to require phoneme-level ASR, stop and flag it instead of stubbing it.
 - Comment the analysis code generously — the owner must be able to explain every step of §5 in an interview.
 - Prefer standard, well-documented library calls over custom DSP where possible.
