@@ -9,7 +9,16 @@ serialization, since those are pure and easy to get subtly wrong.
 
 from __future__ import annotations
 
-from analysis.qf_client import ChapterAudio, VerseTimestamp, WordTimestamp
+import pytest
+
+from analysis.qf_client import (
+    ChapterAudio,
+    PublicMirrorClient,
+    QuranFoundationClient,
+    VerseText,
+    VerseTimestamp,
+    WordTimestamp,
+)
 from scripts import build_reference
 
 
@@ -71,3 +80,30 @@ def test_chapter_audio_to_dict_includes_computed_durations():
     assert verse["verse_number"] == 1
     assert verse["duration_ms"] == 2000
     assert verse["words"][0]["duration_ms"] == 500
+
+
+def test_verse_texts_to_dict_serializes_arabic_text():
+    verse_texts = [
+        VerseText(verse_key="1:1", verse_number=1, text_uthmani="بِسْمِ ٱللَّهِ", words=["بِسْمِ", "ٱللَّهِ"])
+    ]
+
+    result = build_reference.verse_texts_to_dict(verse_texts)
+
+    assert result["verses"][0]["text_uthmani"] == "بِسْمِ ٱللَّهِ"
+    assert result["verses"][0]["words"] == ["بِسْمِ", "ٱللَّهِ"]
+
+
+def test_make_client_returns_public_mirror_for_mirror_source():
+    assert isinstance(build_reference.make_client("public-mirror"), PublicMirrorClient)
+
+
+def test_make_client_returns_qf_client_for_qf_source(monkeypatch):
+    monkeypatch.setenv("QF_CLIENT_ID", "cid")
+    monkeypatch.setenv("QF_CLIENT_SECRET", "secret")
+
+    assert isinstance(build_reference.make_client("qf"), QuranFoundationClient)
+
+
+def test_make_client_rejects_unknown_source():
+    with pytest.raises(ValueError):
+        build_reference.make_client("somewhere-else")

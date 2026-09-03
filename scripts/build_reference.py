@@ -36,7 +36,9 @@ from analysis import audio_io, pitch, tone  # noqa: E402
 from analysis.qf_client import (  # noqa: E402
     AL_FATIHA_CHAPTER_NUMBER,
     ChapterAudio,
+    PublicMirrorClient,
     QuranFoundationClient,
+    VerseText,
     slugify,
 )
 
@@ -84,6 +86,21 @@ def adjust_timestamps_for_trim(
     )
 
 
+def verse_texts_to_dict(verse_texts: list[VerseText]) -> dict:
+    """Serialize verse/word Arabic text for the API's passage endpoint (§6)."""
+    return {
+        "verses": [
+            {
+                "verse_key": verse.verse_key,
+                "verse_number": verse.verse_number,
+                "text_uthmani": verse.text_uthmani,
+                "words": verse.words,
+            }
+            for verse in verse_texts
+        ]
+    }
+
+
 def chapter_audio_to_dict(chapter_audio: ChapterAudio) -> dict:
     """Serialize a ChapterAudio (with computed durations) to a JSON-able dict."""
     return {
@@ -111,24 +128,49 @@ def chapter_audio_to_dict(chapter_audio: ChapterAudio) -> dict:
     }
 
 
+def make_client(source: str):
+    """Build the content API client for the requested source.
+
+    `qf` is the PRD's fixed production source and needs credentials;
+    `public-mirror` is the unauthenticated development fallback (see
+    docs/adr/0001-reference-data-source.md).
+    """
+    if source == "qf":
+        return QuranFoundationClient.from_env()
+    if source == "public-mirror":
+        return PublicMirrorClient()
+    raise ValueError(f"Unknown source {source!r}; expected 'qf' or 'public-mirror'.")
+
+
 def build_reference(
     reciter_name: str,
     output_dir: Path,
     chapter_number: int = AL_FATIHA_CHAPTER_NUMBER,
     plot_verse: int | None = None,
+    source: str = "qf",
+    reciter_id: int | None = None,
 ) -> Path:
     """Fetch, preprocess, extract features, and cache one reciter's chapter.
 
     Returns the reciter's output directory (data/reference/<slug>/).
     """
-    client = QuranFoundationClient.from_env()
+    client = make_client(source)
 
-    print(f"Looking up chapter-reciter id for {reciter_name!r}...")
-    reciter_id = client.find_reciter_id(reciter_name)
+    if reciter_id is None:
+        print(f"Looking up chapter-reciter id for {reciter_name!r}...")
+        reciter_id = client.find_reciter_id(reciter_name)
     print(f"  -> reciter_id={reciter_id}")
 
     print(f"Fetching chapter {chapter_number} audio + word timestamps...")
     chapter_audio = client.get_chapter_audio_with_segments(reciter_id, chapter_number)
+    if not chapter_audio.verses:
+        raise RuntimeError(
+            f"Reciter id {reciter_id} returned no word-level timestamps for chapter "
+            f"{chapter_number}. Pick a reciter that has segment data."
+        )
+
+    print(f"Fetching chapter {chapter_number} verse + word text...")
+    verse_texts = client.get_verse_texts(chapter_number)
 
     reciter_slug = slugify(reciter_name)
     reciter_dir = output_dir / reciter_slug
@@ -170,11 +212,24 @@ def build_reference(
     timestamps_path = reciter_dir / "timestamps.json"
     timestamps_path.write_text(
         json.dumps(
-            {"reciter_name": reciter_name, "reciter_id": reciter_id, **chapter_audio_to_dict(chapter_audio)},
+            {
+                "reciter_name": reciter_name,
+                "reciter_id": reciter_id,
+                "source": source,
+                **chapter_audio_to_dict(chapter_audio),
+            },
             indent=2,
-        )
+        ),
+        encoding="utf-8",
     )
     print(f"Saved word/verse timestamps -> {timestamps_path}")
+
+    passage_path = reciter_dir / "passage.json"
+    passage_path.write_text(
+        json.dumps(verse_texts_to_dict(verse_texts), indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    print(f"Saved verse/word Arabic text -> {passage_path}")
 
     if plot_verse is not None:
         plot_path = plot_reference_pitch(chapter_audio, pitch_contour, plot_verse, reciter_dir)
@@ -237,6 +292,23 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Directory to cache reference features under (default: data/reference/).",
     )
     parser.add_argument(
+        "--reciter-id",
+        type=int,
+        default=None,
+        help="Skip the name lookup and use this chapter-reciter id directly.",
+    )
+    parser.add_argument(
+        "--source",
+        choices=["qf", "public-mirror"],
+        default="qf",
+        help=(
+            "Where to fetch reference data from. 'qf' (default) is the Quran Foundation "
+            "API and needs QF_CLIENT_ID/QF_CLIENT_SECRET; 'public-mirror' is the same v4 "
+            "API served unauthenticated at api.quran.com, for local development before "
+            "credentials are issued."
+        ),
+    )
+    parser.add_argument(
         "--plot-verse",
         type=int,
         default=None,
@@ -249,7 +321,13 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     load_dotenv(REPO_ROOT / ".env")
     try:
-        build_reference(args.reciter_name, args.output_dir, plot_verse=args.plot_verse)
+        build_reference(
+            args.reciter_name,
+            args.output_dir,
+            plot_verse=args.plot_verse,
+            source=args.source,
+            reciter_id=args.reciter_id,
+        )
     except Exception as exc:  # noqa: BLE001 - top-level CLI error boundary
         print(f"error: {exc}", file=sys.stderr)
         return 1

@@ -202,6 +202,95 @@ def test_get_chapter_audio_with_segments_skips_malformed_segments():
     assert len(chapter_audio.verses[0].words) == 1
 
 
+def test_get_verse_texts_parses_text_and_drops_verse_number_glyph():
+    raw = {
+        "verses": [
+            {
+                "verse_key": "1:1",
+                "verse_number": 1,
+                "text_uthmani": "بِسْمِ ٱللَّهِ",
+                "words": [
+                    {"char_type_name": "word", "text_uthmani": "بِسْمِ"},
+                    {"char_type_name": "word", "text_uthmani": "ٱللَّهِ"},
+                    # the trailing verse-number glyph must not become a word
+                    {"char_type_name": "end", "text_uthmani": "١"},
+                ],
+            }
+        ]
+    }
+    client, session = _client([_token_response(), _FakeResponse(json_data=raw)])
+
+    verses = client.get_verse_texts(chapter_number=1)
+
+    assert len(verses) == 1
+    assert verses[0].verse_number == 1
+    assert verses[0].text_uthmani == "بِسْمِ ٱللَّهِ"
+    assert verses[0].words == ["بِسْمِ", "ٱللَّهِ"]
+
+
 def test_slugify_normalizes_names_for_filesystem_use():
     assert qf_client.slugify("Maher Al Muaiqly") == "maher_al_muaiqly"
     assert qf_client.slugify("Abu Bakr al-Shatri") == "abu_bakr_al_shatri"
+
+
+class TestPublicMirrorClient:
+    """The unauthenticated development source (see ADR-0001)."""
+
+    def test_requests_go_to_mirror_without_auth_headers(self):
+        session = _FakeSession([_FakeResponse(json_data={"chapters": []})])
+        client = qf_client.PublicMirrorClient(session=session)
+
+        client._request("/api/v4/chapters")
+
+        method, url, kwargs = session.requests[0]
+        assert url == "https://api.quran.com/api/v4/chapters"
+        assert "headers" not in kwargs
+
+    def test_uses_unprefixed_v4_path(self):
+        raw = {
+            "audio_file": {
+                "audio_url": "https://example.com/1.mp3",
+                "format": "mp3",
+                "timestamps": [
+                    {
+                        "verse_key": "1:1",
+                        "timestamp_from": 0,
+                        "timestamp_to": 100,
+                        "segments": [[1, 0, 100]],
+                    }
+                ],
+            }
+        }
+        session = _FakeSession([_FakeResponse(json_data=raw)])
+        client = qf_client.PublicMirrorClient(session=session)
+
+        client.get_chapter_audio_with_segments(reciter_id=6, chapter_number=1)
+
+        _method, url, _kwargs = session.requests[0]
+        assert url == "https://api.quran.com/api/v4/chapter_recitations/6/1"
+
+    def test_list_chapter_reciters_falls_back_to_recitations(self):
+        session = _FakeSession(
+            [
+                _FakeResponse(status_code=503, text="Service Unavailable"),
+                _FakeResponse(json_data={"recitations": [{"id": 6, "reciter_name": "Al-Husary"}]}),
+            ]
+        )
+        client = qf_client.PublicMirrorClient(session=session)
+
+        reciters = client.list_chapter_reciters()
+
+        assert reciters == [{"id": 6, "reciter_name": "Al-Husary"}]
+
+    def test_find_reciter_id_matches_reciter_name_key_from_fallback(self):
+        session = _FakeSession(
+            [
+                _FakeResponse(status_code=503, text="Service Unavailable"),
+                _FakeResponse(
+                    json_data={"recitations": [{"id": 6, "reciter_name": "Mahmoud Al-Husary"}]}
+                ),
+            ]
+        )
+        client = qf_client.PublicMirrorClient(session=session)
+
+        assert client.find_reciter_id("al-husary") == 6
