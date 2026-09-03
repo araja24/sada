@@ -10,6 +10,7 @@ scipy
 fastdtw
 pydub
 matplotlib
+soundfile
 
 # Quran Foundation API client + config (M1)
 requests
