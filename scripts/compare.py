@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+"""CLI: compare a user's recitation to a cached reference reciter.
+
+Milestone 2's first slice (INITIAL_PROJECT_PLAN.md §5.4/§5.5, §9): DTW-align
+the user's pitch contour to a cached reference reciter's, then print the
+melody score (overall + per-verse) and specific improvement tips. Reads the
+reference bundle that `scripts/build_reference.py` cached under
+data/reference/<reciter_slug>/ -- run that first if it doesn't exist yet.
+
+Usage:
+    python scripts/compare.py --audio my_recitation.wav --reciter mishary
+    python scripts/compare.py --audio my_recitation.wav --reciter mishary --verses 1-3
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+import numpy as np
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT))
+
+from analysis import audio_io, pitch  # noqa: E402
+from analysis.melody import DivergenceRegion, MelodyScoreResult, score_melody  # noqa: E402
+from analysis.qf_client import AL_FATIHA_CHAPTER_NUMBER, VerseTimestamp, WordTimestamp  # noqa: E402
+
+DEFAULT_REFERENCE_DIR = REPO_ROOT / "data" / "reference"
+
+
+class ComparisonError(RuntimeError):
+    """Raised for any user-facing failure (bad reciter, bad verse range, ...)."""
+
+
+def load_reference_contour(reciter_dir: Path) -> pitch.PitchContour:
+    """Load a cached reciter's pitch contour from features.npz (M1 output)."""
+    features_path = reciter_dir / "features.npz"
+    if not features_path.exists():
+        raise ComparisonError(
+            f"No cached reference found at {reciter_dir}. "
+            "Run scripts/build_reference.py for this reciter first."
+        )
+    features = np.load(features_path)
+    return pitch.PitchContour(
+        times=features["pitch_times"],
+        f0_hz=features["f0_hz"],
+        voiced_flag=features["voiced_flag"],
+        semitones=features["semitones"],
+        semitones_centered=features["semitones_centered"],
+        median_semitone=float(features["median_semitone"]),
+    )
+
+
+def load_reference_verses(
+    reciter_dir: Path, chapter_number: int = AL_FATIHA_CHAPTER_NUMBER
+) -> list[VerseTimestamp]:
+    """Load a cached reciter's verse/word timestamps from timestamps.json (M1 output)."""
+    timestamps_path = reciter_dir / "timestamps.json"
+    if not timestamps_path.exists():
+        raise ComparisonError(
+            f"No cached reference found at {reciter_dir}. "
+            "Run scripts/build_reference.py for this reciter first."
+        )
+    data = json.loads(timestamps_path.read_text(encoding="utf-8"))
+    return [
+        VerseTimestamp(
+            verse_key=v.get("verse_key", f"{chapter_number}:{v['verse_number']}"),
+            timestamp_from_ms=v["timestamp_from_ms"],
+            timestamp_to_ms=v["timestamp_to_ms"],
+            words=[
+                WordTimestamp(word_index=w["word_index"], start_ms=w["start_ms"], end_ms=w["end_ms"])
+                for w in v["words"]
+            ],
+        )
+        for v in data["verses"]
+    ]
+
+
+def parse_verse_range(spec: str) -> tuple[int, int]:
+    """Parse '1-7' or '3' into an inclusive (lo, hi) verse-number range."""
+    if "-" in spec:
+        lo_str, hi_str = spec.split("-", 1)
+        lo, hi = int(lo_str), int(hi_str)
+    else:
+        lo = hi = int(spec)
+    if lo > hi:
+        raise ComparisonError(f"Invalid verse range {spec!r}: start is after end.")
+    return lo, hi
+
+
+def filter_verse_range(
+    verses: list[VerseTimestamp], verse_range: tuple[int, int]
+) -> list[VerseTimestamp]:
+    lo, hi = verse_range
+    return [v for v in verses if lo <= v.verse_number <= hi]
+
+
+def format_tip(region: DivergenceRegion) -> str:
+    direction_word = "higher" if region.direction == "too_high" else "lower"
+    if region.verse_number is not None:
+        where = f"verse {region.verse_number}"
+        if region.word_index is not None:
+            where += f", word {region.word_index}"
+    else:
+        where = f"~{region.start_s:.1f}s into the reference"
+    return (
+        f"Your pitch runs {direction_word} than the reference around {where} "
+        f"(~{region.duration_s:.1f}s, avg {abs(region.mean_diff_semitones):.1f} semitones {direction_word})."
+    )
+
+
+def print_report(result: MelodyScoreResult) -> None:
+    print()
+    print(f"Melody score: {result.overall_score:.0f}/100")
+    if result.per_verse_scores:
+        print()
+        print("Per-verse melody scores:")
+        for verse_number in sorted(result.per_verse_scores):
+            print(f"  Verse {verse_number}: {result.per_verse_scores[verse_number]:.0f}/100")
+    print()
+    if result.divergences:
+        print("Tips:")
+        for region in result.divergences:
+            print(f"  - {format_tip(region)}")
+    else:
+        print("No significant melodic divergences detected.")
+
+
+def compare(
+    audio_path: Path,
+    reciter: str,
+    verse_range_spec: str = "1-7",
+    reference_dir: Path = DEFAULT_REFERENCE_DIR,
+) -> MelodyScoreResult:
+    reciter_dir = reference_dir / reciter
+
+    print(f"Loading reference bundle for {reciter!r}...")
+    ref_contour = load_reference_contour(reciter_dir)
+    ref_verses = load_reference_verses(reciter_dir)
+
+    verse_range = parse_verse_range(verse_range_spec)
+    verses_in_range = filter_verse_range(ref_verses, verse_range)
+    if not verses_in_range:
+        raise ComparisonError(
+            f"No verses in range {verse_range_spec!r} for reciter {reciter!r} "
+            f"(available: 1-{len(ref_verses)})."
+        )
+
+    print(f"Loading and preprocessing {audio_path}...")
+    y, sr, _trim = audio_io.load_and_preprocess(audio_path)
+
+    print("Extracting pitch contour...")
+    user_contour = pitch.extract_pitch_contour(y, sr)
+
+    print("Aligning and scoring melody...")
+    return score_melody(user_contour, ref_contour, ref_verses=verses_in_range)
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--audio", required=True, type=Path, help="Path to the user's recorded audio file."
+    )
+    parser.add_argument(
+        "--reciter", required=True, help="Reference reciter's slug under data/reference/."
+    )
+    parser.add_argument(
+        "--verses",
+        default="1-7",
+        help="Verse range to compare, e.g. '1-7' or '3' (default: 1-7, all of Al-Fatiha).",
+    )
+    parser.add_argument(
+        "--reference-dir",
+        type=Path,
+        default=DEFAULT_REFERENCE_DIR,
+        help="Directory reference bundles are cached under (default: data/reference/).",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parse_args(argv)
+    try:
+        result = compare(args.audio, args.reciter, args.verses, args.reference_dir)
+    except (ComparisonError, ValueError, RuntimeError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
+    print_report(result)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

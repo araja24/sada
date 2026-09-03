@@ -177,11 +177,18 @@ def build_reference(
     reciter_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"Downloading audio from {chapter_audio.audio_url}...")
-    with tempfile.NamedTemporaryFile(suffix=f".{chapter_audio.audio_format}") as tmp:
+    # delete=False + manual cleanup: on Windows, a NamedTemporaryFile kept
+    # open (delete=True's default) stays locked, so a second writer
+    # (download_audio) can't open the same path -- PermissionError.
+    tmp = tempfile.NamedTemporaryFile(suffix=f".{chapter_audio.audio_format}", delete=False)
+    tmp.close()
+    try:
         client.download_audio(chapter_audio.audio_url, tmp.name)
 
         print("Preprocessing (mono, 22050 Hz, trim silence)...")
         y_trimmed, sr, (trim_start, _trim_end) = audio_io.load_and_preprocess(tmp.name)
+    finally:
+        Path(tmp.name).unlink(missing_ok=True)
 
     chapter_audio = adjust_timestamps_for_trim(chapter_audio, trim_start, sr)
 
