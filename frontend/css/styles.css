@@ -178,7 +178,28 @@ h2 { font-size: 1.5rem; margin: .25rem 0 .75rem; }
 .tip-list { margin: 0; padding-left: 1.1rem; display: grid; gap: .4rem; }
 .tip { line-height: 1.5; }
 
-.try-again { display: block; margin: 0 auto; }
+.results-actions { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; }
+
+/* --- recent attempts (issue #11) --- */
+.recent { margin-top: 2.5rem; border-top: 1px solid var(--line); padding-top: 1.5rem; }
+.recent-title { font-size: 1.1rem; margin: 0 0 .75rem; }
+.recent-list { list-style: none; padding: 0; margin: 0 0 .75rem; display: grid; gap: .5rem; }
+.recent-item {
+  width: 100%; display: flex; align-items: center; gap: .9rem; text-align: left;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: .7rem .9rem; cursor: pointer; font: inherit;
+}
+.recent-item:hover { border-color: var(--accent); }
+.recent-score {
+  font-size: 1.3rem; font-weight: 600; color: var(--accent);
+  min-width: 2.2rem; text-align: center;
+}
+.recent-meta { display: flex; flex-direction: column; line-height: 1.35; }
+
+/* --- auth form (issue #11) --- */
+#auth-form { max-width: 22rem; margin-top: 1rem; }
+#auth-form .btn { width: 100%; margin-top: .3rem; }
+#auth-toggle { margin-top: .6rem; }
 
 /* --- error banner --- */
 .error-banner {

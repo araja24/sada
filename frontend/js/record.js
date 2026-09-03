@@ -7,6 +7,14 @@
   "use strict";
 
   var CAP_SECONDS = 180; // PRD: hard 3:00 cap
+  var lastSubmitBtn = null; // so the flow can re-enable it after a failed submit
+
+  function recover() {
+    if (lastSubmitBtn) {
+      lastSubmitBtn.disabled = false;
+      lastSubmitBtn.textContent = "Submit for analysis";
+    }
+  }
 
   function mount(container, opts) {
     var session = {
@@ -46,6 +54,7 @@
     var stopBtn = button("btn btn-quiet", "■ Stop");
     var reRecordBtn = button("btn btn-quiet", "Re-record");
     var submitBtn = button("btn btn-primary", "Submit for analysis");
+    lastSubmitBtn = submitBtn;
     var preview = el("audio", "rec-preview");
     preview.controls = true;
 
@@ -162,5 +171,5 @@
     if (global.SadaFlow) global.SadaFlow.clearError();
   }
 
-  global.SadaRecord = { mount: mount, CAP_SECONDS: CAP_SECONDS };
+  global.SadaRecord = { mount: mount, recover: recover, CAP_SECONDS: CAP_SECONDS };
 })(window);
