@@ -16,6 +16,7 @@ import numpy as np
 from fastdtw import fastdtw
 
 from . import config
+from .qf_client import VerseTimestamp
 
 
 @dataclass
@@ -59,3 +60,24 @@ def align_sequences(
     return AlignmentResult(
         path=path, distance=float(distance), normalized_distance=float(normalized_distance)
     )
+
+
+def path_indices_by_verse(
+    path: list[tuple[int, int]], ref_times: np.ndarray, verses: list[VerseTimestamp]
+) -> dict[int, list[int]]:
+    """For each verse, which positions in `path` land inside it (by ref time).
+
+    Shared by every per-verse scorer (melody, tone, ...) that needs to
+    restrict the one alignment path to a single verse's span: `ref_times`
+    is whatever per-frame time array the path's ref-indices index into
+    (e.g. a voiced pitch contour's `.times`), and must line up with the
+    ref-index half of `path`.
+    """
+    ranges: dict[int, list[int]] = {v.verse_number: [] for v in verses}
+    for i, (_u_idx, r_idx) in enumerate(path):
+        ref_t_ms = ref_times[r_idx] * 1000.0
+        for v in verses:
+            if v.timestamp_from_ms <= ref_t_ms <= v.timestamp_to_ms:
+                ranges[v.verse_number].append(i)
+                break
+    return ranges
