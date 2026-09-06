@@ -28,7 +28,7 @@ export default function Navbar() {
       items={items}
       logo={
         <span
-          className="text-[1.6rem] leading-none text-foreground"
+          className="inline-block -translate-y-[10px] text-[1.6rem] leading-none text-foreground"
           style={{ fontFamily: '"Amiri Quran", serif' }}
           aria-label="Sada home"
         >
