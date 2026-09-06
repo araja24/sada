@@ -303,8 +303,33 @@ def test_static_frontend_is_served(client):
     root = client.get("/")
     assert root.status_code == 200
     assert "text/html" in root.headers["content-type"]
-    assert client.get("/js/app.js").status_code == 200
-    assert client.get("/js/record.js").status_code == 200
-    assert client.get("/js/results.js").status_code == 200
-    assert client.get("/css/styles.css").status_code == 200
-    assert client.get("/favicon.svg").status_code == 200
+
+
+def test_spa_deep_link_falls_back_to_index(client):
+    """react-router owns /results/:id; the server must return the shell, not 404."""
+    resp = client.get("/results/abc123")
+    assert resp.status_code == 200
+    assert "text/html" in resp.headers["content-type"]
+
+
+def test_unknown_api_path_404s_as_json_not_spa(client):
+    """The catch-all must never swallow /api/*, or client errors become HTML."""
+    resp = client.get("/api/does-not-exist")
+    assert resp.status_code == 404
+    assert "application/json" in resp.headers["content-type"]
+
+
+def test_docs_not_shadowed_by_spa(client):
+    assert "text/html" in client.get("/docs").headers["content-type"]
+    assert client.get("/openapi.json").json()["info"]["title"] == "Sada"
+
+
+def test_favicon_is_served(client):
+    resp = client.get("/favicon.svg")
+    assert resp.status_code == 200
+
+
+def test_spa_fallback_rejects_path_traversal(client):
+    resp = client.get("/../../app/settings.py")
+    assert resp.status_code in (200, 404)
+    assert "SESSION_SECRET_KEY" not in resp.text

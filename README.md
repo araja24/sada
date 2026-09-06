@@ -49,6 +49,31 @@ uvicorn app.main:app --reload
 
 The single FastAPI service serves both the JSON API (`/api/*`) and the static frontend (`frontend/`). Reciters are seeded into SQLite on startup from whatever bundles exist under `data/reference/`.
 
+## Frontend
+
+The frontend is a React + TypeScript SPA built by Vite. The built output in
+`frontend/dist/` is **committed to git** (see [ADR-0003](./docs/adr/0003-react-frontend.md)),
+so `uvicorn` alone serves the whole app with no Node required.
+
+```bash
+cd frontend
+npm install
+npm run dev       # :5173 with hot reload, proxying /api to :8000
+npm test          # Vitest over the pure logic
+npm run build     # writes frontend/dist
+```
+
+For hot reload, run `uvicorn app.main:app --reload` and `npm run dev` side by
+side and use <http://localhost:5173>.
+
+**Before deploying, rebuild and commit the bundle**, or the deploy ships a
+stale UI:
+
+```bash
+cd frontend && npm run build && cd ..
+git add frontend/dist && git commit -m "Rebuild frontend"
+```
+
 ## CLI (no web)
 
 ```bash
@@ -101,7 +126,7 @@ Postgres and point `SADA_DATABASE_URL` at it.
 
 - `analysis/` — pure-Python analysis pipeline (pitch, tone, alignment, four scorers, `pipeline.analyze`). No web imports.
 - `app/` — FastAPI layer: endpoints, SQLite persistence, self-built email+password accounts (ADR-0002).
-- `frontend/` — vanilla HTML/CSS/JS single-page flow, served by `app`.
+- `frontend/` — React + TypeScript SPA built by Vite; the committed `frontend/dist/` build is served by `app` (ADR-0003).
 - `scripts/build_reference.py` — manual reference-data builder. `scripts/compare.py` — CLI scorer.
 - `data/reference/` (bundles), `data/attempts/` (uploads) — both gitignored.
 - `tests/` — unit + API tests.

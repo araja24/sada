@@ -1,4 +1,83 @@
-/* Sada — calm, non-gamified. Dark-on-light, generous spacing, one accent. */
+/* --- Tailwind v4, preflight deliberately OMITTED ---------------------
+   Sada's visual design lives in the hand-written rules further down this
+   file. Tailwind's preflight would zero `p` margins and unstyled heading
+   sizes, which changes the welcome, results and tips screens. So we import
+   only the theme and the utilities and leave the base reset alone.
+   Consequence: utilities that assume preflight must be explicit, e.g.
+   use `border border-border` rather than a bare `border`. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "tw-animate-css";
+
+/* Preflight is off (see top of file), so buttons keep their native chrome.
+   Reset just the parts that fight Tailwind-styled buttons. This sits in
+   @layer base, and Sada's unlayered rules below outrank every layer, so
+   .btn / .verse-chip / .reciter-card / .recent-item keep their own borders
+   and backgrounds exactly as before. */
+@layer base {
+  button,
+  [type="button"],
+  [type="submit"],
+  [type="reset"] {
+    -webkit-appearance: button;
+    background-color: transparent;
+    background-image: none;
+    border: 0 solid;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+}
+
+
+/* shadcn's token names mapped onto Sada's existing palette, so components
+   pasted from shadcn/ui inherit this app's colours instead of slate grey. */
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #2b2723;
+
+  --color-card: #ffffff;
+  --color-card-foreground: #2b2723;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #2b2723;
+
+  --color-primary: #3f6f5e;
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: #eaf1ee;
+  --color-secondary-foreground: #2b2723;
+
+  /* shadcn "accent" is the subtle hover wash, not the brand colour. */
+  --color-accent: #eaf1ee;
+  --color-accent-foreground: #2b2723;
+
+  --color-muted: #faf8f4;
+  --color-muted-foreground: #6b635a;
+
+  --color-destructive: #9a3b2f;
+  --color-destructive-foreground: #ffffff;
+
+  --color-border: #e7e1d8;
+  --color-input: #e7e1d8;
+  --color-ring: #3f6f5e;
+
+  --font-sans: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+}
+
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
+/* Sada: calm, non-gamified. Dark-on-light, generous spacing, one accent. */
 
 :root {
   --bg: #faf8f4;
@@ -30,10 +109,26 @@ body {
   clip: rect(0 0 0 0); white-space: nowrap;
 }
 
-/* --- header / footer --- */
-.site-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 1rem 1.25rem; max-width: var(--maxw); margin: 0 auto;
+/* --- navbar / footer --- */
+.navbar {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--surface); border-bottom: 1px solid var(--line);
+}
+.navbar-inner {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: .85rem 1.25rem; max-width: var(--maxw); margin: 0 auto;
+}
+.navbar-links { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
+.navlink {
+  font: inherit; font-weight: 500; cursor: pointer;
+  background: transparent; border: 0; color: var(--ink-soft);
+  padding: .4rem .6rem; border-radius: 8px;
+  transition: background .15s, color .15s;
+}
+.navlink:hover, .navlink:focus-visible { color: var(--ink); background: var(--bg); outline: none; }
+@media (max-width: 30rem) {
+  .navbar-inner { gap: .5rem; }
+  .navlink { padding: .35rem .4rem; font-size: .9rem; }
 }
 .wordmark {
   display: inline-flex; align-items: baseline; gap: .5rem;
@@ -42,16 +137,34 @@ body {
 .wordmark { font-family: "Amiri Quran", serif; font-size: 1.6rem; }
 .wordmark span { font-family: "Inter", sans-serif; font-size: 1rem; color: var(--ink-soft); }
 
-.account-nav { display: flex; gap: .75rem; align-items: center; font-size: .9rem; }
+.account-nav { display: inline-flex; gap: .75rem; align-items: center; font-size: .9rem; }
+.account-nav:not([hidden]) { margin-left: .5rem; padding-left: .65rem; border-left: 1px solid var(--line); }
 .account-nav a, .account-nav button { color: var(--accent); }
+.account-nav .btn { margin: 0; }
+@media (max-width: 30rem) {
+  .account-nav:not([hidden]) { margin-left: .25rem; padding-left: .4rem; }
+}
 
 .site-footer {
   max-width: var(--maxw); margin: 3rem auto 2rem; padding: 1rem 1.25rem;
-  border-top: 1px solid var(--line); color: var(--ink-soft); font-size: .85rem;
+  border-top: 1px solid var(--line);
 }
+.faq-heading {
+  font-size: 1.1rem; font-weight: 600; color: var(--ink); margin: 0 0 .75rem;
+}
+.faq-list { display: flex; flex-direction: column; gap: .5rem; }
+.faq-item {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); padding: 0 1rem;
+}
+.faq-trigger {
+  width: 100%; padding: .85rem 0; font-size: .95rem; font-weight: 600; color: var(--ink);
+}
+.faq-answer { color: var(--ink-soft); font-size: .9rem; padding-bottom: .9rem; }
 
 /* --- layout --- */
-#app { max-width: var(--maxw); margin: 0 auto; padding: 1rem 1.25rem 2rem; }
+/* Top padding clears the floating nav (components/ui/navigation-menu). */
+#app { max-width: var(--maxw); margin: 0 auto; padding: 6rem 1.25rem 2rem; }
 
 .step { animation: fade .25s ease both; }
 .step-centered { text-align: center; padding-top: 3rem; }
