@@ -1,4 +1,4 @@
-/* Results page (PRD §4 step 7) — the visual centerpiece.
+/* Results page (PRD §4 step 7): the visual centerpiece.
 
    SadaResults.render(container, attempt, { passage, reciterName, onTryAgain }) */
 (function (global) {
@@ -13,7 +13,7 @@
   var SUB_HINT = {
     melody: "How closely your pitch movement follows the reciter's.",
     pacing: "How evenly your tempo matches, verse to verse.",
-    tone: "How close your vocal timbre is — every voice is different.",
+    tone: "How close your vocal timbre is. Every voice is different.",
     elongation: "How your held (madd) syllables line up in length.",
   };
 
@@ -78,7 +78,7 @@
       if (!tips.length) {
         var none = el("p", "muted");
         none.textContent = focusedVerse
-          ? "Nothing stood out for this verse — nicely done."
+          ? "Nothing stood out for this verse. Nicely done."
           : "Nothing specific stood out across these verses. Keep practicing with the reciter.";
         tipsWrap.appendChild(none);
         return;

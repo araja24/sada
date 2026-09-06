@@ -1,4 +1,4 @@
-/* Sada — calm, non-gamified. Dark-on-light, generous spacing, one accent. */
+/* Sada: calm, non-gamified. Dark-on-light, generous spacing, one accent. */
 
 :root {
   --bg: #faf8f4;
@@ -30,10 +30,26 @@ body {
   clip: rect(0 0 0 0); white-space: nowrap;
 }
 
-/* --- header / footer --- */
-.site-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 1rem 1.25rem; max-width: var(--maxw); margin: 0 auto;
+/* --- navbar / footer --- */
+.navbar {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--surface); border-bottom: 1px solid var(--line);
+}
+.navbar-inner {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: .85rem 1.25rem; max-width: var(--maxw); margin: 0 auto;
+}
+.navbar-links { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
+.navlink {
+  font: inherit; font-weight: 500; cursor: pointer;
+  background: transparent; border: 0; color: var(--ink-soft);
+  padding: .4rem .6rem; border-radius: 8px;
+  transition: background .15s, color .15s;
+}
+.navlink:hover, .navlink:focus-visible { color: var(--ink); background: var(--bg); outline: none; }
+@media (max-width: 30rem) {
+  .navbar-inner { gap: .5rem; }
+  .navlink { padding: .35rem .4rem; font-size: .9rem; }
 }
 .wordmark {
   display: inline-flex; align-items: baseline; gap: .5rem;
@@ -42,8 +58,13 @@ body {
 .wordmark { font-family: "Amiri Quran", serif; font-size: 1.6rem; }
 .wordmark span { font-family: "Inter", sans-serif; font-size: 1rem; color: var(--ink-soft); }
 
-.account-nav { display: flex; gap: .75rem; align-items: center; font-size: .9rem; }
+.account-nav { display: inline-flex; gap: .75rem; align-items: center; font-size: .9rem; }
+.account-nav:not([hidden]) { margin-left: .5rem; padding-left: .65rem; border-left: 1px solid var(--line); }
 .account-nav a, .account-nav button { color: var(--accent); }
+.account-nav .btn { margin: 0; }
+@media (max-width: 30rem) {
+  .account-nav:not([hidden]) { margin-left: .25rem; padding-left: .4rem; }
+}
 
 .site-footer {
   max-width: var(--maxw); margin: 3rem auto 2rem; padding: 1rem 1.25rem;

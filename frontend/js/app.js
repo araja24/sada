@@ -25,6 +25,17 @@
     els.errorBanner = $("error-banner");
 
     $("start-btn").addEventListener("click", function () { goReciter(); });
+
+    $("nav-home").addEventListener("click", function (e) {
+      e.preventDefault();
+      stopRefAudio();
+      showStep("welcome", { replace: true });
+    });
+    $("nav-practice").addEventListener("click", function () {
+      stopRefAudio();
+      goReciter();
+    });
+    $("nav-attempts").addEventListener("click", goMyAttempts);
     document.querySelectorAll("[data-back]").forEach(function (b) {
       b.addEventListener("click", back);
     });
@@ -331,6 +342,18 @@
   }
 
   // --- recent attempts (issue #11) --------------------------
+
+  function goMyAttempts() {
+    stopRefAudio();
+    showStep("welcome", { replace: true });
+    var box = $("recent-attempts");
+    if (box && !box.hidden) {
+      box.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else if (!currentUser) {
+      setAuthMode("login");
+      showStep("auth");
+    }
+  }
 
   function renderRecentAttempts() {
     var box = $("recent-attempts");

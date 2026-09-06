@@ -2,7 +2,7 @@
    visible 3:00 cap, playback + re-record, then submit.
 
    SadaRecord.mount(container, { reciterName, startVerse, endVerse, onSubmit })
-   — onSubmit(blob) is called with the recorded audio when the user submits. */
+   onSubmit(blob) is called with the recorded audio when the user submits. */
 (function (global) {
   "use strict";
 

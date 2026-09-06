@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sada — recitation style coach</title>
-  <meta name="description" content="Match the style of your Quran recitation — melody, pacing, tone, elongation — to a professional reciter's." />
+  <title>Sada: recitation style coach</title>
+  <meta name="description" content="Match the style of your Quran recitation (melody, pacing, tone, elongation) to a professional reciter's." />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,10 +12,16 @@
   <link rel="stylesheet" href="/css/styles.css" />
 </head>
 <body>
-  <header class="site-header">
-    <a class="wordmark" href="/" aria-label="Sada home">صدى<span>Sada</span></a>
-    <nav class="account-nav" id="account-nav" hidden></nav>
-  </header>
+  <nav class="navbar" aria-label="Primary">
+    <div class="navbar-inner">
+      <a class="wordmark" href="/" id="nav-home" aria-label="Sada home">صدى<span>Sada</span></a>
+      <div class="navbar-links">
+        <button type="button" class="navlink" id="nav-practice">Practice</button>
+        <button type="button" class="navlink" id="nav-attempts">My attempts</button>
+        <span class="account-nav" id="account-nav" hidden></span>
+      </div>
+    </div>
+  </nav>
 
   <main id="app">
     <!-- STEP: welcome -->
@@ -23,8 +29,8 @@
       <h1 id="welcome-title">Echo a reciter's style</h1>
       <p class="lede">
         Sada listens to how you recite Surah Al-Fatiha and compares the
-        <em>style</em> of your delivery — melody, pacing, tone, and elongation
-        timing — to a professional reciter you choose. It is a practice companion,
+        <em>style</em> of your delivery (melody, pacing, tone, and elongation
+        timing) to a professional reciter you choose. It is a practice companion,
         not a correctness or tajweed checker.
       </p>
       <button class="btn btn-primary" id="start-btn">Start practicing</button>
@@ -34,7 +40,7 @@
 
     <!-- STEP: sign in / sign up -->
     <section class="step" id="step-auth" hidden aria-labelledby="auth-title">
-      <button class="btn btn-quiet back-btn" data-back>← Back</button>
+      <button class="btn btn-quiet back-btn" data-back>Back</button>
       <h2 id="auth-title">Save your attempts</h2>
       <p class="muted" id="auth-intro">
         Create an account (or log in) to keep your recitation history across
@@ -57,7 +63,7 @@
 
     <!-- STEP: choose reciter -->
     <section class="step" id="step-reciter" hidden aria-labelledby="reciter-title">
-      <button class="btn btn-quiet back-btn" data-back>← Back</button>
+      <button class="btn btn-quiet back-btn" data-back>Back</button>
       <h2 id="reciter-title">Choose a reciter to echo</h2>
       <p class="muted">Your recitation will be compared to this reciter's recorded Al-Fatiha.</p>
       <div class="card-grid" id="reciter-list" aria-live="polite"></div>
@@ -65,7 +71,7 @@
 
     <!-- STEP: choose passage / verse range -->
     <section class="step" id="step-passage" hidden aria-labelledby="passage-title">
-      <button class="btn btn-quiet back-btn" data-back>← Back</button>
+      <button class="btn btn-quiet back-btn" data-back>Back</button>
       <h2 id="passage-title">Choose your verses</h2>
       <p class="muted">
         Tap a verse to set where you'll start, then tap another to set where you'll
@@ -85,7 +91,7 @@
 
     <!-- STEP: record (issue #9) -->
     <section class="step" id="step-record" hidden aria-labelledby="record-title">
-      <button class="btn btn-quiet back-btn" data-back>← Back</button>
+      <button class="btn btn-quiet back-btn" data-back>Back</button>
       <h2 id="record-title">Record your recitation</h2>
       <div id="record-mount"></div>
     </section>
@@ -110,7 +116,7 @@
   <footer class="site-footer">
     <p id="privacy-note">
       As a guest, Sada stores only your recitation attempts, keyed to a random
-      ID in a cookie — no account, no personal data. If you sign up, we also
+      ID in a cookie, with no account and no personal data. If you sign up, we also
       store your email and a one-way hash of your password so your attempt
       history follows you across devices. We never share any of it.
     </p>
