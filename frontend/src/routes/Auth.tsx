@@ -15,6 +15,14 @@ export default function Auth({ mode }: { mode: "signup" | "login" }) {
 
   const isSignup = mode === "signup";
 
+  // React Router tracks its position in the history stack on history.state.idx.
+  // idx 0 means this is the first entry, so there is nothing to go back to.
+  function leaveAuth() {
+    const idx = (window.history.state as { idx?: number } | null)?.idx ?? 0;
+    if (idx > 0) navigate(-1);
+    else navigate("/", { replace: true });
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -23,7 +31,7 @@ export default function Auth({ mode }: { mode: "signup" | "login" }) {
       const call = isSignup ? api.signup : api.login;
       await call(email.trim(), password);
       await refresh();
-      navigate(-1);
+      leaveAuth();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : String(err));
     } finally {
@@ -33,7 +41,7 @@ export default function Auth({ mode }: { mode: "signup" | "login" }) {
 
   return (
     <section className="step" aria-labelledby="auth-title">
-      <button className="btn btn-quiet back-btn" onClick={() => navigate(-1)}>
+      <button className="btn btn-quiet back-btn" onClick={leaveAuth}>
         Back
       </button>
       <h2 id="auth-title">{isSignup ? "Save your attempts" : "Welcome back"}</h2>
