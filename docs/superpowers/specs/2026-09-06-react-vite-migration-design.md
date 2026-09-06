@@ -94,6 +94,7 @@ Latest as published on npm at the time of writing (2026-09-06), which is what
 | `react-router-dom` | 7.18.3 |
 | `@vitejs/plugin-react` | 6.1.1 |
 | `typescript` | 7.0.2 |
+| `vitest` | 5.0.0 |
 
 TypeScript 7 is the native compiler rewrite. If it causes friction with the
 Vite React template during implementation, pinning to the latest 5.x is an
@@ -207,9 +208,16 @@ No changes to routes, models, auth, or the analysis pipeline.
 
 ## Testing
 
-There is **no automated frontend coverage before or after this change**. That
-is a known gap and this migration does not close it. Correctness rests on:
+**Amended 2026-09-06 during planning.** The original version of this section
+ruled out any frontend test framework. That left most implementation tasks with
+no verification beyond "it compiles", so **Vitest 5.0.0 is added for pure logic
+only**: the `client.ts` error mapping, the `useRecorder` state machine (written
+as a pure exported reducer so it needs no DOM or `MediaRecorder`), and the
+results grouping/clamp helpers. Component and route rendering remain untested.
 
+Correctness therefore rests on:
+
+0. `npm test` (Vitest) covering the pure logic listed above.
 1. `pytest -q` staying green. `test_static_frontend_is_served` is the one test
    that must change: it currently asserts `/js/app.js`, `/js/record.js`,
    `/js/results.js` and `/css/styles.css`, which stop existing once Vite emits
@@ -226,8 +234,9 @@ is a known gap and this migration does not close it. Correctness rests on:
 ## Out of scope
 
 - Any visual redesign. The port is pixel-identical by intent.
-- Adding a frontend test framework (Vitest, Testing Library, Playwright specs).
-  Worth doing, but it is its own piece of work.
+- Component and route rendering tests (React Testing Library) and Playwright
+  specs. Worth doing, but each is its own piece of work. See the amendment in
+  Testing above for the narrow Vitest scope that *is* included.
 - Changing auth, the API surface, or the analysis pipeline.
 - Server-side rendering, or any framework above Vite.
 
