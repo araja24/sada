@@ -43,7 +43,7 @@ export default function Results() {
     };
   }, [attemptId]);
 
-  if (error) {
+  if (error && !attempt) {
     return (
       <section className="step">
         <ErrorBanner message={error} />
@@ -65,6 +65,7 @@ export default function Results() {
       <h2 id="results-title" className="visually-hidden">
         Your results
       </h2>
+      <ErrorBanner message={error} />
       <OverallScore attempt={attempt} />
       <SubScoreGrid attempt={attempt} />
       <VerseChips
