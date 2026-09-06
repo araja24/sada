@@ -17,6 +17,10 @@ data/attempts/*
 data/reference/*
 !data/reference/.gitkeep
 
+# Node / Vite. dist/ is deliberately NOT ignored: Render's python runtime has
+# no Node, so the build output is committed (see ADR-0003).
+frontend/node_modules/
+
 # OS
 .DS_Store
 Thumbs.db

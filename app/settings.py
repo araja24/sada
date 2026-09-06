@@ -49,4 +49,4 @@ ACCEPTED_AUDIO_CONTENT_TYPES = {
 }
 ACCEPTED_AUDIO_EXTENSIONS = {".webm", ".ogg", ".wav", ".mp3", ".m4a", ".aac"}
 
-FRONTEND_DIR = Path(os.environ.get("SADA_FRONTEND_DIR", REPO_ROOT / "frontend"))
+FRONTEND_DIR = Path(os.environ.get("SADA_FRONTEND_DIR", REPO_ROOT / "frontend" / "dist"))
