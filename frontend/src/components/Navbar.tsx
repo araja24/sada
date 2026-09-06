@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useSession } from "../state/SessionContext";
 
 export default function Navbar() {
@@ -17,17 +17,9 @@ export default function Navbar() {
   return (
     <nav className="navbar" aria-label="Primary">
       <div className="navbar-inner">
-        <a
-          className="wordmark"
-          href="/"
-          aria-label="Sada home"
-          onClick={(e) => {
-            e.preventDefault();
-            navigate("/");
-          }}
-        >
+        <Link className="wordmark" to="/" aria-label="Sada home">
           صدى<span>Sada</span>
-        </a>
+        </Link>
         <div className="navbar-links">
           <button type="button" className="navlink" onClick={() => navigate("/reciters")}>
             Practice
