@@ -7,10 +7,7 @@ import Auth from "./routes/Auth";
 import Reciters from "./routes/Reciters";
 import PassageRoute from "./routes/Passage";
 import Record from "./routes/Record";
-
-function Placeholder({ name }: { name: string }) {
-  return <section className="step">{name}</section>;
-}
+import Results from "./routes/Results";
 
 export default function App() {
   return (
@@ -24,7 +21,7 @@ export default function App() {
           <Route path="/reciters" element={<Reciters />} />
           <Route path="/verses" element={<PassageRoute />} />
           <Route path="/record" element={<Record />} />
-          <Route path="/results/:attemptId" element={<Placeholder name="Results" />} />
+          <Route path="/results/:attemptId" element={<Results />} />
         </Routes>
       </main>
       <Footer />
