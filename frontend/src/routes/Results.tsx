@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../api/client";
-import type { Attempt } from "../api/types";
+import type { Attempt, Passage } from "../api/types";
 import ErrorBanner from "../components/ErrorBanner";
 import OverallScore from "../components/OverallScore";
+import PitchChart from "../components/PitchChart";
 import SubScoreGrid from "../components/SubScoreGrid";
 import TipsList from "../components/TipsList";
 import VerseChips from "../components/VerseChips";
@@ -15,6 +16,8 @@ export default function Results() {
   const { user } = useSession();
 
   const [attempt, setAttempt] = useState<Attempt | null>(null);
+  const [passage, setPassage] = useState<Passage | null>(null);
+  const [reciterName, setReciterName] = useState("the reciter");
   const [focused, setFocused] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,6 +29,11 @@ export default function Results() {
         const a = await api.attempt(attemptId);
         if (cancelled) return;
         setAttempt(a);
+        const [p, reciters] = await Promise.all([api.passage(a.reciter_id), api.reciters()]);
+        if (cancelled) return;
+        setPassage(p);
+        const match = reciters.find((r) => r.id === a.reciter_id);
+        if (match) setReciterName(match.name);
       } catch (err) {
         if (!cancelled) setError(err instanceof ApiError ? err.message : String(err));
       }
@@ -64,7 +72,12 @@ export default function Results() {
         focused={focused}
         onPick={(v) => setFocused((cur) => (cur === v ? null : v))}
       />
-      {/* Task 10 inserts <PitchChart /> here, above the tips. */}
+      <PitchChart
+        attempt={attempt}
+        passage={passage}
+        focusedVerse={focused}
+        reciterName={reciterName}
+      />
       <TipsList tips={attempt.tips} focusedVerse={focused} />
       <div className="results-actions">
         <button
