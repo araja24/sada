@@ -63,6 +63,18 @@
   --color-ring: #3f6f5e;
 
   --font-sans: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+}
+
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
 }
 
 /* Sada: calm, non-gamified. Dark-on-light, generous spacing, one accent. */
@@ -135,8 +147,20 @@ body {
 
 .site-footer {
   max-width: var(--maxw); margin: 3rem auto 2rem; padding: 1rem 1.25rem;
-  border-top: 1px solid var(--line); color: var(--ink-soft); font-size: .85rem;
+  border-top: 1px solid var(--line);
 }
+.faq-heading {
+  font-size: 1.1rem; font-weight: 600; color: var(--ink); margin: 0 0 .75rem;
+}
+.faq-list { display: flex; flex-direction: column; gap: .5rem; }
+.faq-item {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface); padding: 0 1rem;
+}
+.faq-trigger {
+  width: 100%; padding: .85rem 0; font-size: .95rem; font-weight: 600; color: var(--ink);
+}
+.faq-answer { color: var(--ink-soft); font-size: .9rem; padding-bottom: .9rem; }
 
 /* --- layout --- */
 /* Top padding clears the floating nav (components/ui/navigation-menu). */

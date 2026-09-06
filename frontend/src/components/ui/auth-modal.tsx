@@ -302,9 +302,10 @@ function AuthModal({
 
             <motion.div variants={item} className="mt-6 text-center">
               <p className="text-xs text-muted-foreground">
-                As a guest, Sada stores only your attempts against a random ID
-                in a cookie. Signing up also stores your email and a one-way
-                hash of your password. We never share any of it.
+                You can practice without an account. We'll only keep the
+                recitations you record on this device. If you sign up, your
+                history can follow you to other devices. We never share any of
+                it.
               </p>
             </motion.div>
           </motion.div>

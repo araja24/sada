@@ -152,14 +152,16 @@ export function AnimatedNav({
         onClick={handleNavClick}
         className={cn(
           "relative flex h-12 items-center overflow-hidden rounded-full border border-border bg-background/85 shadow-lg backdrop-blur-md",
-          !isExpanded && "cursor-pointer justify-center",
+          isExpanded
+            ? "gap-5 px-2 sm:gap-0 sm:min-w-[min(44rem,calc(100vw-2.5rem))] sm:justify-between"
+            : "cursor-pointer justify-center",
           className,
         )}
       >
         {logo && (
           <motion.div
             variants={logoVariants}
-            className="flex shrink-0 items-center pl-4 pr-2"
+            className="flex shrink-0 items-center pl-3"
           >
             {logo}
           </motion.div>
@@ -167,7 +169,7 @@ export function AnimatedNav({
 
         <motion.div
           className={cn(
-            "flex items-center gap-1 sm:gap-2 pr-2",
+            "flex items-center gap-1 sm:gap-3",
             !isExpanded && "pointer-events-none",
           )}
         >
@@ -192,7 +194,7 @@ export function AnimatedNav({
             variants={itemVariants}
             onClick={(e) => e.stopPropagation()}
             className={cn(
-              "flex shrink-0 items-center gap-2 pr-3 pl-1",
+              "flex shrink-0 items-center gap-1.5 pr-2",
               !isExpanded && "pointer-events-none",
             )}
           >

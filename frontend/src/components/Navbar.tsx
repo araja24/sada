@@ -28,16 +28,11 @@ export default function Navbar() {
       items={items}
       logo={
         <span
-          className="flex items-baseline gap-1.5 text-foreground"
+          className="text-[1.6rem] leading-none text-foreground"
+          style={{ fontFamily: '"Amiri Quran", serif' }}
           aria-label="Sada home"
         >
-          <span
-            className="text-xl leading-none"
-            style={{ fontFamily: '"Amiri Quran", serif' }}
-          >
-            صدى
-          </span>
-          <span className="text-sm font-semibold">Sada</span>
+          صدى
         </span>
       }
       trailing={
@@ -58,17 +53,17 @@ export default function Navbar() {
           <>
             <button
               type="button"
-              onClick={() => openAuth("login")}
-              className="rounded-full px-2 py-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              Log in
-            </button>
-            <button
-              type="button"
               onClick={() => openAuth("signup")}
               className="rounded-full bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
               Sign up
+            </button>
+            <button
+              type="button"
+              onClick={() => openAuth("login")}
+              className="rounded-full px-2 py-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Log in
             </button>
           </>
         )
