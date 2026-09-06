@@ -9,11 +9,13 @@ import SubScoreGrid from "../components/SubScoreGrid";
 import TipsList from "../components/TipsList";
 import VerseChips from "../components/VerseChips";
 import { useSession } from "../state/SessionContext";
+import { useAuthModal } from "../state/AuthModalContext";
 
 export default function Results() {
   const { attemptId } = useParams<{ attemptId: string }>();
   const navigate = useNavigate();
   const { user } = useSession();
+  const { openAuth } = useAuthModal();
 
   const [attempt, setAttempt] = useState<Attempt | null>(null);
   const [passage, setPassage] = useState<Passage | null>(null);
@@ -92,7 +94,7 @@ export default function Results() {
           Try again
         </button>
         {!user && (
-          <button className="btn btn-quiet" onClick={() => navigate("/signup")}>
+          <button className="btn btn-quiet" onClick={() => openAuth("signup")}>
             Save your attempts
           </button>
         )}

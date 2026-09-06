@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { AttemptSummary } from "../api/types";
 import { useSession } from "../state/SessionContext";
+import { useAuthModal } from "../state/AuthModalContext";
 
 export default function RecentAttempts() {
   const [rows, setRows] = useState<AttemptSummary[]>([]);
   const navigate = useNavigate();
   const { user } = useSession();
+  const { openAuth } = useAuthModal();
 
   useEffect(() => {
     let cancelled = false;
@@ -54,7 +56,7 @@ export default function RecentAttempts() {
         ))}
       </ul>
       {!user && (
-        <button type="button" className="btn btn-quiet back-btn" onClick={() => navigate("/signup")}>
+        <button type="button" className="btn btn-quiet back-btn" onClick={() => openAuth("signup")}>
           Sign up to keep these
         </button>
       )}
